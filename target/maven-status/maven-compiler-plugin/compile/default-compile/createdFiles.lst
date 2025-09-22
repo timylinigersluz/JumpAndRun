@@ -1,4 +1,5 @@
 ch\ksrminecraft\jumpandrun\db\RunRepository.class
+ch\ksrminecraft\jumpandrun\listeners\WorldLockListener.class
 ch\ksrminecraft\jumpandrun\utils\IslandGenerator.class
 ch\ksrminecraft\jumpandrun\db\DatabaseConnection.class
 ch\ksrminecraft\jumpandrun\utils\TestRunManager.class
@@ -6,6 +7,8 @@ ch\ksrminecraft\jumpandrun\listeners\TestRunAbortListener.class
 ch\ksrminecraft\jumpandrun\utils\ConfigManager.class
 ch\ksrminecraft\jumpandrun\commands\JnrDeleteCommand.class
 ch\ksrminecraft\jumpandrun\commands\JnrTeleportCommand.class
+ch\ksrminecraft\jumpandrun\utils\PointsService.class
+ch\ksrminecraft\jumpandrun\utils\WorldLockManager.class
 ch\ksrminecraft\jumpandrun\commands\JnrListCommand.class
 ch\ksrminecraft\jumpandrun\JumpAndRun.class
 ch\ksrminecraft\jumpandrun\listeners\FallDownListener.class
