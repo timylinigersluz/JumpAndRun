@@ -2,11 +2,9 @@ package ch.ksrminecraft.jumpandrun;
 
 import ch.ksrminecraft.jumpandrun.commands.*;
 import ch.ksrminecraft.jumpandrun.db.DatabaseConnection;
-import ch.ksrminecraft.jumpandrun.listeners.CheckpointRespawnListener;
-import ch.ksrminecraft.jumpandrun.listeners.FallDownListener;
-import ch.ksrminecraft.jumpandrun.listeners.PressurePlateListener;
-import ch.ksrminecraft.jumpandrun.listeners.TestRunAbortListener;
+import ch.ksrminecraft.jumpandrun.listeners.*;
 import ch.ksrminecraft.jumpandrun.utils.ConfigManager;
+import ch.ksrminecraft.jumpandrun.utils.PointsService;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.plugin.PluginManager;
@@ -46,13 +44,21 @@ public final class JumpAndRun extends JavaPlugin {
             getLogger().info("[JNR-DEBUG] Config geladen, Debugmodus aktiv.");
         }
 
-        // Datenbank initialisieren
+        // JumpAndRun-Datenbank initialisieren
         try {
             DatabaseConnection.initializeWorldTable();
         } catch (RuntimeException e) {
             getLogger().severe("Keine DB gefunden, Plugin fährt runter!");
             getServer().getPluginManager().disablePlugin(this);
             return;
+        }
+
+        // RankPointsAPI initialisieren (separate Punkte-DB)
+        try {
+            PointsService.init();
+        } catch (Exception e) {
+            getLogger().severe("PointsService konnte nicht initialisiert werden! Punktevergabe deaktiviert.");
+            e.printStackTrace();
         }
 
         // Listener initialisieren und registrieren
@@ -62,7 +68,8 @@ public final class JumpAndRun extends JavaPlugin {
         pm.registerEvents(pressurePlatesListener, this);
         pm.registerEvents(fallDownListener, this);
         pm.registerEvents(new TestRunAbortListener(), this);
-        pm.registerEvents(new CheckpointRespawnListener(), this); // ✅ NEU: Respawn auf Checkpoints
+        pm.registerEvents(new CheckpointRespawnListener(), this);
+        pm.registerEvents(new WorldLockListener(), this);
 
         // Command-Dispatcher für /jnr
         if (getCommand("jnr") != null) {

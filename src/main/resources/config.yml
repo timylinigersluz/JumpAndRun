@@ -1,10 +1,23 @@
 schematicPath: "JumpAndRunIsland.schem"
-mysql:
-  host: "jdbc:mysql://example.com:3306/dbname"
-  user: "yourusername"
-  password: "yourpassword"
 
 debug: true
+
+# JumpAndRun-DB (besteht schon bei dir)
+mysql:
+  host: localhost
+  port: 3306
+  database: jnr
+  user: root
+  password: geheim
+
+# Punkte-DB für RankPointsAPI (separat!)
+pointsdb:
+  host: localhost
+  port: 3306
+  database: rankpoints
+  user: rankuser
+  password: anderespasswort
+  excludeStaff: true
 
 plates:
   start: HEAVY_WEIGHTED_PRESSURE_PLATE

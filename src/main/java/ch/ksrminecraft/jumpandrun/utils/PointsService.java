@@ -15,17 +15,17 @@ public class PointsService {
     private static PointsAPI api;
 
     /**
-     * Initialisiert die RankPointsAPI mit den Werten aus config.yml.
+     * Initialisiert die RankPointsAPI mit den Werten aus config.yml (pointsdb.*).
      */
     public static void init() {
-        String host = JumpAndRun.getPlugin().getConfig().getString("mysql.host");
-        int port = JumpAndRun.getPlugin().getConfig().getInt("mysql.port");
-        String db = JumpAndRun.getPlugin().getConfig().getString("mysql.database");
-        String user = JumpAndRun.getPlugin().getConfig().getString("mysql.user");
-        String pass = JumpAndRun.getPlugin().getConfig().getString("mysql.password");
+        String host = JumpAndRun.getPlugin().getConfig().getString("pointsdb.host");
+        int port = JumpAndRun.getPlugin().getConfig().getInt("pointsdb.port");
+        String db = JumpAndRun.getPlugin().getConfig().getString("pointsdb.database");
+        String user = JumpAndRun.getPlugin().getConfig().getString("pointsdb.user");
+        String pass = JumpAndRun.getPlugin().getConfig().getString("pointsdb.password");
 
         boolean debug = JumpAndRun.getConfigManager().isDebug();
-        boolean excludeStaff = JumpAndRun.getPlugin().getConfig().getBoolean("points.excludeStaff", true);
+        boolean excludeStaff = JumpAndRun.getPlugin().getConfig().getBoolean("pointsdb.excludeStaff", true);
 
         String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + db;
 
@@ -38,7 +38,7 @@ public class PointsService {
                 excludeStaff
         );
 
-        Bukkit.getConsoleSender().sendMessage("[JNR] PointsService initialisiert (excludeStaff=" + excludeStaff + ")");
+        Bukkit.getConsoleSender().sendMessage("[JNR] PointsService initialisiert (DB=" + db + ", excludeStaff=" + excludeStaff + ")");
     }
 
     /**
