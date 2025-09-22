@@ -1,0 +1,15 @@
+schematicPath: "JumpAndRunIsland.schem"
+mysql:
+  host: "jdbc:mysql://example.com:3306/dbname"
+  user: "yourusername"
+  password: "yourpassword"
+
+debug: true
+
+plates:
+  start: HEAVY_WEIGHTED_PRESSURE_PLATE
+  end: LIGHT_WEIGHTED_PRESSURE_PLATE
+  checkpoint: STONE_PRESSURE_PLATE
+
+points:
+  new-record: 10

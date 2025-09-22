@@ -1,0 +1,53 @@
+name: JumpAndRun
+version: '1.2'
+main: ch.ksrminecraft.jumpandrun.JumpAndRun
+api-version: '1.21'
+softdepend: ['Multiverse-Core', 'WorldEdit', 'RankPointsAPI']
+
+commands:
+  jnr:
+    description: Hauptbefehl für Jump and Run (/jnr create|delete|teleport|list|publish|ready)
+    usage: /jnr <create|delete|teleport|list|publish|ready>
+    permission: jumpandrun.use
+    aliases: [jumpandrun, jnrp]
+
+permissions:
+  jumpandrun.use:
+    description: Erlaubt die Nutzung des Hauptbefehls /jnr
+    default: true
+
+  jumpandrun.create:
+    description: Erlaubt das Erstellen einer JumpAndRun-Welt
+    default: op
+
+  jumpandrun.delete:
+    description: Erlaubt das Löschen einer JumpAndRun-Welt
+    default: op
+
+  jumpandrun.teleport:
+    description: Erlaubt das Teleportieren in eine JumpAndRun-Welt
+    default: true
+
+  jumpandrun.list:
+    description: Erlaubt die Auflistung aller JumpAndRun-Welten
+    default: true
+
+  jumpandrun.publish:
+    description: Erlaubt das Freigeben einer JumpAndRun-Welt (aus Draft → Live)
+    default: op
+
+  jumpandrun.ready:
+    description: Setzt die Welt in den Testmodus, um sie selbst im Survival zu spielen
+    default: op
+
+  jumpandrun.sign.create:
+    description: Erlaubt das Erstellen von JumpAndRun-Schildern ([JNR], [JNR-LEADER])
+    default: op
+
+  jumpandrun.sign.use:
+    description: Erlaubt das Benutzen von JumpAndRun-Schildern
+    default: true
+
+  jumpandrun.sign.leader:
+    description: Erlaubt das Erstellen und Nutzen von Leader-Schildern
+    default: true
