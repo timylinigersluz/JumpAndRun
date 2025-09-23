@@ -11,6 +11,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.Material;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -69,12 +72,18 @@ public class AliasPromptManager implements Listener {
         // Spieler informieren
         player.sendMessage(ChatColor.GREEN + "✔ Dein JumpAndRun heißt jetzt: §e" + alias);
 
-        /// Spieler zurückteleportieren (Origin oder Fallback)
+        // Spieler zurückteleportieren (Origin oder Fallback)
         Location origin = WorldSwitchListener.getOrigin(player);
         if (origin != null) {
             Bukkit.getScheduler().runTask(JumpAndRun.getPlugin(), () -> {
+                WorldSwitchListener.markSkipClear(player); // Inventar-Clear beim WorldSwitch überspringen
                 player.teleport(origin);
                 WorldSwitchListener.clearOrigin(player);
+
+                // Inventar manuell leeren und Schild geben
+                player.getInventory().clear();
+                giveSign(player);
+
                 player.sendMessage(ChatColor.GRAY + "Du wurdest zurück in die Lobby teleportiert.");
             });
         } else {
@@ -82,7 +91,13 @@ public class AliasPromptManager implements Listener {
             World fallback = Bukkit.getWorld(fallbackName);
             if (fallback != null) {
                 Bukkit.getScheduler().runTask(JumpAndRun.getPlugin(), () -> {
+                    WorldSwitchListener.markSkipClear(player); // Inventar-Clear beim WorldSwitch überspringen
                     player.teleport(fallback.getSpawnLocation());
+
+                    // Inventar manuell leeren und Schild geben
+                    player.getInventory().clear();
+                    giveSign(player);
+
                     player.sendMessage(ChatColor.GRAY + "Du wurdest zur Fallback-Welt '" + fallbackName + "' teleportiert.");
                 });
             } else {
@@ -106,6 +121,16 @@ public class AliasPromptManager implements Listener {
             Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
                     + " hat Welt " + worldName + " den Alias '" + alias + "' vergeben.");
         }
+    }
+
+    private static void giveSign(Player player) {
+        ItemStack sign = new ItemStack(Material.OAK_SIGN, 1);
+        ItemMeta meta = sign.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.AQUA + "JumpAndRun Schild");
+            sign.setItemMeta(meta);
+        }
+        player.getInventory().addItem(sign);
     }
 
     public static boolean isAwaiting(Player player) {

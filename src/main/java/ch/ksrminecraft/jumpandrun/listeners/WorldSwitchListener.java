@@ -26,6 +26,7 @@ import java.util.UUID;
 public class WorldSwitchListener implements Listener {
 
     private static final Map<UUID, Location> originLocations = new HashMap<>();
+    private static final Map<UUID, Boolean> skipClear = new HashMap<>();
 
     @EventHandler
     public void onWorldChange(PlayerChangedWorldEvent event) {
@@ -37,6 +38,15 @@ public class WorldSwitchListener implements Listener {
         if (WorldRepository.exists(oldWorld) && !WorldRepository.exists(newWorld)) {
             // Spieler verlässt eine JnR-Welt -> StopWatch stoppen
             TimeManager.stopWatch(player);
+
+            // Inventar leeren (außer Alias-Spezialfall)
+            if (!skipClear.getOrDefault(player.getUniqueId(), false)) {
+                player.getInventory().clear();
+                player.updateInventory();
+            } else {
+                skipClear.remove(player.getUniqueId()); // nur 1x überspringen
+            }
+
             if (Bukkit.getConsoleSender() != null) {
                 Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch von "
                         + player.getName() + " beim Verlassen der Welt " + oldWorld + " gestoppt.");
@@ -96,5 +106,10 @@ public class WorldSwitchListener implements Listener {
 
         player.getInventory().setItem(8, leaveItem); // Slot 8 = letzter Hotbar-Slot
         player.updateInventory();
+    }
+
+    /** Spezialfall aus AliasPromptManager: Inventar-Clear überspringen */
+    public static void markSkipClear(Player player) {
+        skipClear.put(player.getUniqueId(), true);
     }
 }

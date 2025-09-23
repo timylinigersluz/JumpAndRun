@@ -13,49 +13,79 @@ import java.util.UUID;
 public class PointsService {
 
     private static PointsAPI api;
+    private static boolean enabled = false;
 
     /**
-     * Initialisiert die RankPointsAPI mit den Werten aus config.yml (pointsdb.*).
+     * Initialisiert die RankPointsAPI, falls in der Config aktiviert.
      */
     public static void init() {
-        String host = JumpAndRun.getPlugin().getConfig().getString("pointsdb.host");
-        int port = JumpAndRun.getPlugin().getConfig().getInt("pointsdb.port");
-        String db = JumpAndRun.getPlugin().getConfig().getString("pointsdb.database");
-        String user = JumpAndRun.getPlugin().getConfig().getString("pointsdb.user");
-        String pass = JumpAndRun.getPlugin().getConfig().getString("pointsdb.password");
+        boolean pointsEnabled = JumpAndRun.getPlugin().getConfig().getBoolean("pointsdb.enabled", false);
 
-        boolean debug = JumpAndRun.getConfigManager().isDebug();
-        boolean excludeStaff = JumpAndRun.getPlugin().getConfig().getBoolean("pointsdb.excludeStaff", true);
+        if (!pointsEnabled) {
+            enabled = false;
+            api = null;
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Punkte-DB ist deaktiviert → Punktevergabe abgeschaltet.");
+            return;
+        }
 
-        String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + db;
+        try {
+            String host = JumpAndRun.getPlugin().getConfig().getString("pointsdb.host");
+            int port = JumpAndRun.getPlugin().getConfig().getInt("pointsdb.port");
+            String db = JumpAndRun.getPlugin().getConfig().getString("pointsdb.database");
+            String user = JumpAndRun.getPlugin().getConfig().getString("pointsdb.user");
+            String pass = JumpAndRun.getPlugin().getConfig().getString("pointsdb.password");
 
-        api = new PointsAPI(
-                jdbcUrl,
-                user,
-                pass,
-                JumpAndRun.getPlugin().getLogger(),
-                debug,
-                excludeStaff
-        );
+            boolean debug = JumpAndRun.getConfigManager().isDebug();
+            boolean excludeStaff = JumpAndRun.getPlugin().getConfig().getBoolean("pointsdb.excludeStaff", true);
 
-        Bukkit.getConsoleSender().sendMessage("[JNR] PointsService initialisiert (DB=" + db + ", excludeStaff=" + excludeStaff + ")");
+            String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + db;
+
+            api = new PointsAPI(
+                    jdbcUrl,
+                    user,
+                    pass,
+                    JumpAndRun.getPlugin().getLogger(),
+                    debug,
+                    excludeStaff
+            );
+
+            enabled = true;
+            Bukkit.getConsoleSender().sendMessage("[JNR] PointsService initialisiert (DB=" + db + ", excludeStaff=" + excludeStaff + ")");
+        } catch (Exception e) {
+            enabled = false;
+            api = null;
+            Bukkit.getConsoleSender().sendMessage("[JNR-ERROR] PointsService konnte nicht initialisiert werden!");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Prüfen, ob Punktevergabe aktiv ist.
+     */
+    public static boolean isEnabled() {
+        return enabled && api != null;
     }
 
     /**
      * Vergibt Punkte an einen Spieler für einen neuen Weltrekord.
      */
     public static void awardRecordPoints(Player player) {
-        if (api == null) {
-            Bukkit.getConsoleSender().sendMessage("[JNR] Fehler: PointsService nicht initialisiert!");
+        if (!isEnabled()) {
+            if (JumpAndRun.getConfigManager().isDebug()) {
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] awardRecordPoints() aufgerufen, aber PointsService ist deaktiviert.");
+            }
             return;
         }
 
         int points = JumpAndRun.getPlugin().getConfig().getInt("points.new-record", 50);
         UUID uuid = player.getUniqueId();
 
-        api.addPoints(uuid, points);
-
-        player.sendMessage("§aDu hast §e" + points + " Punkte §afür einen neuen Weltrekord erhalten!");
-        Bukkit.getConsoleSender().sendMessage("[JNR] " + player.getName() + " hat " + points + " Punkte für neuen Rekord erhalten.");
+        try {
+            api.addPoints(uuid, points);
+            player.sendMessage("§aDu hast §e" + points + " Punkte §afür einen neuen Weltrekord erhalten!");
+            Bukkit.getConsoleSender().sendMessage("[JNR] " + player.getName() + " hat " + points + " Punkte für neuen Rekord erhalten.");
+        } catch (Exception e) {
+            Bukkit.getConsoleSender().sendMessage("[JNR-ERROR] Fehler beim Punkte vergeben an " + player.getName() + ": " + e.getMessage());
+        }
     }
 }

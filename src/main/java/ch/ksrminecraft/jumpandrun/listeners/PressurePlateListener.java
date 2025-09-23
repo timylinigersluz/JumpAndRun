@@ -5,6 +5,7 @@ import ch.ksrminecraft.jumpandrun.db.CheckpointRepository;
 import ch.ksrminecraft.jumpandrun.db.TimeRepository;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.utils.PlayerUtils;
+import ch.ksrminecraft.jumpandrun.utils.PointsService;
 import ch.ksrminecraft.jumpandrun.utils.TestRunManager;
 import ch.ksrminecraft.jumpandrun.utils.TimeManager;
 import ch.ksrminecraft.jumpandrun.utils.SignUpdater;
@@ -130,6 +131,7 @@ public class PressurePlateListener implements Listener {
                         }, 1L);
 
                         triggerCelebration(player);
+                        PointsService.awardRecordPoints(player);
                         debug("Erster Rekord in Welt " + worldName + ": " + duration + "ms (Spieler=" + player.getName() + ")");
                     } else if (duration <= bestTime) {
                         // Neuer Rekord
@@ -140,6 +142,7 @@ public class PressurePlateListener implements Listener {
                         }, 1L);
 
                         triggerCelebration(player);
+                        PointsService.awardRecordPoints(player);
                         debug("Neuer Rekord in Welt " + worldName + ": " + duration + "ms (Spieler=" + player.getName() + ")");
                     } else {
                         debug("Kein Rekord: Spieler=" + player.getName()
