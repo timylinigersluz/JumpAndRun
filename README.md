@@ -4,7 +4,7 @@ Ein **komplettes JumpAndRun-System** für Minecraft-Server (Paper/Spigot), entwi
 Mooselux ist ein talentierter Coder, dessen Projekt wir erweitert und für unser Server-Netzwerk angepasst haben.
 
 Dieses Plugin erlaubt es Spielern, **eigene JumpAndRun-Welten** zu erstellen, im Draft-Modus zu testen und anschliessend für alle freizugeben.  
-Es enthält ein **Checkpoint-System**, **Schilder für Teleport & Leaderboards**, sowie eine **Integration mit RankPointsAPI** für ein serverweites Punktesystem.
+Es enthält ein **Checkpoint-System**, **Schilder für Teleport & Leaderboards**, ein **Inventar-Management mit Aufgeben-Item**, sowie eine **Integration mit RankPointsAPI** für ein serverweites Punktesystem.
 
 ---
 
@@ -17,8 +17,8 @@ Es enthält ein **Checkpoint-System**, **Schilder für Teleport & Leaderboards**
 
 - **Draft → Ready → Publish Flow**
     - `/jnr ready`: Setzt den Ersteller in den Testmodus (Survival, Timer aktiv).
-    - Erfolgreicher Abschluss = automatische Veröffentlichung (Published = true).
-    - Ab dann können alle Spieler die Welt spielen.
+    - Erfolgreicher Abschluss erfordert Alias-Eingabe → danach Veröffentlichung.
+    - Nach Alias-Eingabe erhält der Ersteller automatisch ein **Schild**, um JNR-Schilder setzen zu können.
 
 - **Checkpoints**
     - Spieler können beim Erstellen zusätzliche Checkpoints platzieren.
@@ -26,14 +26,20 @@ Es enthält ein **Checkpoint-System**, **Schilder für Teleport & Leaderboards**
     - Bei Tod oder Absturz → Respawn beim letzten Checkpoint (oder Startpunkt).
 
 - **Schilder**
-    - `[JNR] <welt>` → Start-Schild: Spieler klicken darauf, um ins JumpAndRun teleportiert zu werden.
-    - `[JNR-LEADER] <welt>` → Leader-Schild: zeigt den aktuellen Rekordhalter und die Bestzeit.
+    - `[JNR] <alias>` → Start-Schild: Spieler klicken darauf, um ins JumpAndRun teleportiert zu werden.
+    - `[JNR-LEADER] <alias>` → Leader-Schild: zeigt den aktuellen Rekordhalter und die Bestzeit.
     - Automatische Aktualisierung bei neuen Rekorden.
 
-- **Punktesystem (RankPointsAPI)**
+- **Aufgeben-Item**
+    - Jeder Spieler erhält beim Betreten einer JNR-Welt ein **Barrier-Item** im letzten Hotbar-Slot.
+    - Mit Rechtsklick → Welt verlassen & Inventar clear.
+    - Zusätzlich Sound- & Partikeleffekte beim Aufgeben.
+
+- **Punktesystem (RankPointsAPI, optional)**
     - Neue Weltrekorde geben Punkte (Wert aus `config.yml`).
     - Integration mit [RankPointsAPI](https://github.com/timylinigersluz/RankPointsAPI).
     - Staff-Mitglieder können optional von der Punktevergabe ausgeschlossen werden.
+    - Falls `pointsdb.enabled = false` → Punktevergabe ist deaktiviert.
 
 - **World Locking**
     - Immer nur **ein Spieler pro Welt gleichzeitig**.
@@ -44,8 +50,10 @@ Es enthält ein **Checkpoint-System**, **Schilder für Teleport & Leaderboards**
     - `config.yml` enthält:
         - Debug-Modus
         - Materialien für Start-/Ziel-/Checkpoint-Platten
+        - MySQL/SQLite-Umschaltung für JNR-Datenbank
+        - Optional: MySQL für RankPointsAPI
         - Punkte für Weltrekorde
-        - MySQL-Zugangsdaten für JnR-DB und RankPointsAPI
+        - Fallback-Welt für Rückteleports
 
 ---
 
@@ -54,75 +62,74 @@ Es enthält ein **Checkpoint-System**, **Schilder für Teleport & Leaderboards**
 ### Hauptbefehl `/jnr`
 - `/jnr create <länge>` → Erstellt ein neues JumpAndRun.
 - `/jnr delete <welt>` → Löscht ein JumpAndRun.
-- `/jnr teleport <welt>` → Teleportiert dich in ein JumpAndRun (falls frei).
+- `/jnr teleport <welt>` → Teleportiert dich in ein JumpAndRun (Staff).
 - `/jnr list` → Listet alle JumpAndRuns mit Status, Leader & Bestzeit.
 - `/jnr ready` → Setzt die Welt in den Testmodus (Ersteller).
-- `/jnr publish` → (Optional) Veröffentlicht ein JumpAndRun manuell.
+- `/jnr continue <welt>` → Draft-Welt erneut betreten.
+- `/jnr abort <keepworld|deleteworld>` → Testlauf abbrechen.
+- `/jnr name <alias>` → Alias nachträglich setzen.
+- `/jnr unpublish <welt>` → Veröffentlichtes JumpAndRun zurück in Draft.
 
 ### Permissions
-- `jumpandrun.use` → erlaubt die Nutzung der Basis-Commands.
+- `jumpandrun.use` → Basis-Command.
 - `jumpandrun.create` → JumpAndRuns erstellen.
 - `jumpandrun.delete` → JumpAndRuns löschen.
-- `jumpandrun.teleport` → JumpAndRuns betreten.
-- `jumpandrun.list` → Liste der JumpAndRuns sehen.
+- `jumpandrun.teleport` → Welten teleportieren (Staff).
+- `jumpandrun.list` → JumpAndRuns auflisten.
 - `jumpandrun.ready` → Testmodus starten.
-- `jumpandrun.publish` → JumpAndRuns veröffentlichen.
-- `jumpandrun.sign.create` → JnR-Schilder erstellen.
+- `jumpandrun.continue` → Draft-Welten fortsetzen.
+- `jumpandrun.abort` → Testläufe abbrechen.
+- `jumpandrun.unpublish` → Welt wieder auf Draft setzen.
+- `jumpandrun.sign.create` → Schilder platzieren ([JNR], [JNR-LEADER]).
 - `jumpandrun.sign.use` → Start-Schilder benutzen.
-- `jumpandrun.sign.leader` → Leader-Schilder erstellen/anzeigen.
+- `jumpandrun.sign.leader` → Leader-Schilder benutzen.
+- `jumpandrun.name` → Alias setzen.
 
 ---
 
 ## 📚 Typische Abläufe (Usecases)
 
 1. **JumpAndRun erstellen**
-    - Ein Spieler mit der Permission `jumpandrun.create` erstellt eine neue Welt mit `/jnr create`.
+    - Mit `/jnr create <länge>` eine neue Welt erstellen.
     - Start- und Zielplattform werden automatisch generiert.
 
 2. **Im Draft-Modus testen**
-    - Der Ersteller gibt `/jnr ready` ein und wird in den Testmodus gesetzt.
-    - Er spielt sein eigenes JumpAndRun durch.
-    - Nach erfolgreichem Abschluss wird die Welt automatisch veröffentlicht.
+    - Mit `/jnr ready` in den Testmodus wechseln.
+    - Nach Abschluss → Alias eingeben.
+    - Danach Teleport zurück & Inventar clear → Spieler erhält **ein Schild**, um Start- & Leaderboardschilder zu setzen.
 
 3. **Spiel durch andere Spieler**
-    - Andere Spieler können das JumpAndRun erst betreten, wenn es veröffentlicht wurde.
-    - Über `/jnr teleport <welt>` oder durch ein `[JNR]`-Schild gelangen sie in die Welt.
+    - Spieler klicken ein `[JNR] <alias>`-Schild, um ins JNR teleportiert zu werden.
+    - Jeder Spieler hat das **Aufgeben-Item**, um vorzeitig abbrechen zu können.
 
 4. **Checkpoints nutzen**
-    - Während des Spiels erreicht der Spieler Checkpoints, die seinen Fortschritt speichern.
-    - Bei einem Tod oder Fall ins Void wird er zum letzten Checkpoint zurückgesetzt.
+    - Checkpoints werden gespeichert.
+    - Bei Tod/Fall ins Void → Spieler wird zurück zum letzten Checkpoint teleportiert.
 
 5. **Bestzeiten & Leaderboards**
-    - Beim Betreten des Ziels wird die Zeit gespeichert.
-    - Erreicht ein Spieler einen neuen Rekord, wird das Leader-Schild automatisch aktualisiert.
-
-6. **Punkte für Rekorde**
-    - Ein neuer Weltrekord bringt dem Spieler Punkte (konfigurierbar in `config.yml`).
-    - Die Punkte werden über die RankPointsAPI global gespeichert.
-
-7. **World Locking**
-    - Nur ein Spieler kann eine JumpAndRun-Welt gleichzeitig betreten.
-    - Andere müssen warten, bis die Welt wieder frei ist.
+    - Zeiten werden automatisch gespeichert.
+    - Neue Rekorde → Leader-Schild wird aktualisiert + Feuerwerk.
+    - Punktevergabe nur, wenn Punkte-DB aktiviert ist.
 
 ---
 
 ## ⚙️ config.yml (Beispiel)
 
 ```yaml
-schematicPath: "JumpAndRunIsland.schem"
-
 debug: true
 
-# JumpAndRun-DB
-mysql:
+# JumpAndRun-DB (MySQL/SQLite)
+jumpandrun:
+  enabled: true    # true = MySQL, false = SQLite
   host: localhost
   port: 3306
   database: jnr
   user: root
   password: geheim
 
-# Punkte-DB für RankPointsAPI
+# Punkte-DB für RankPointsAPI (MySQL)
 pointsdb:
+  enabled: false   # falls false → Punktevergabe deaktiviert
   host: localhost
   port: 3306
   database: rankpoints
@@ -130,13 +137,21 @@ pointsdb:
   password: anderespasswort
   excludeStaff: true
 
+# Druckplatten
 plates:
   start: HEAVY_WEIGHTED_PRESSURE_PLATE
   end: LIGHT_WEIGHTED_PRESSURE_PLATE
   checkpoint: STONE_PRESSURE_PLATE
 
+# Punkte für neue Rekorde
 points:
   new-record: 10
+
+# Fallback-Welt (z. B. Lobby)
+fallback-world: world
+
+# Spieler (intern, nicht verändern)
+players: {}
 ```
 
 ---
@@ -144,14 +159,14 @@ points:
 ## 🧑‍💻 Installation
 
 1. Lade das Plugin herunter (`JumpAndRun-*.jar`).
-2. Kopiere es in den `plugins/` Ordner deines Servers.
-3. Starte den Server neu.
-4. Passe die `config.yml` an (DB-Daten, Platten, Punkte).
-5. Stelle sicher, dass die `RankPointsAPI`-JAR im `plugins/` Ordner liegt.
+2. Lege es in den `plugins/` Ordner.
+3. Passe die `config.yml` an (DB-Daten, Platten, Punkte).
+4. Falls Punkte gewünscht → [RankPointsAPI](https://github.com/timylinigersluz/RankPointsAPI) installieren.
+5. Server neu starten.
 
 ---
 
 ## 📜 Credits
 
 - Ursprünglicher Code: [Mooselux/JumpAndRun](https://github.com/Mooselux/JumpAndRun) ❤️
-- Erweiterungen, Refactoring & Features: **KSR Minecraft Tecs**
+- Erweiterungen & Anpassungen: **KSR Minecraft Tecs**
