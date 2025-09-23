@@ -4,53 +4,96 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Time;
-import java.time.LocalTime;
+import java.sql.*;
 
 /**
- * Verwaltet Runs: Startzeit & Spieler.
+ * Verwaltet aktive Runs: Startzeit & Spieler.
+ * Nutzt die Tabelle ActiveRuns.
  */
 public class RunRepository {
 
+    /**
+     * Speichert die Startzeit für einen Spieler in einer Welt.
+     */
     public static void inputStartTime(World world, Player player) {
-        try {
-            Time startTime = Time.valueOf(LocalTime.now());
-            Statement stmt = DatabaseConnection.getConnection().createStatement();
-            String sql = "UPDATE JumpAndRuns SET StartTime='" + startTime + "', " +
-                    "CurrentPlayer='" + player.getUniqueId() + "' WHERE JnrName='" + world.getName() + "'";
-            stmt.executeUpdate(sql);
-            stmt.close();
-            log("Startzeit für Welt " + world.getName() + " gespeichert.");
+        int jnrId = WorldRepository.getId(world.getName());
+        if (jnrId == -1) {
+            log("Konnte keine jnrId für Welt " + world.getName() + " finden.");
+            return;
+        }
+
+        String sql = "INSERT INTO ActiveRuns (jnrId, playerUUID, startTime) VALUES (?,?,?) " +
+                "ON DUPLICATE KEY UPDATE startTime=?";
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
+            long now = System.currentTimeMillis();
+            ps.setInt(1, jnrId);
+            ps.setString(2, player.getUniqueId().toString());
+            ps.setLong(3, now);
+            ps.setLong(4, now);
+            ps.executeUpdate();
+            log("Startzeit für " + player.getName() + " in Welt " + world.getName() + " gespeichert.");
         } catch (SQLException e) {
             log("Fehler beim Speichern der Startzeit.");
-        }
-    }
-
-    public static Time getStartTime(World world) {
-        try {
-            Statement stmt = DatabaseConnection.getConnection().createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT StartTime FROM JumpAndRuns WHERE JnrName='" + world.getName() + "'");
-            Time start = rs.next() ? rs.getTime("StartTime") : null;
-            stmt.close();
-            return start;
-        } catch (SQLException e) {
-            log("Fehler beim Laden der Startzeit.");
             throw new RuntimeException(e);
         }
     }
 
-    public static Player getStartPlayer(World world) {
-        try {
-            Statement stmt = DatabaseConnection.getConnection().createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT CurrentPlayer FROM JumpAndRuns WHERE JnrName='" + world.getName() + "'");
-            Player result = rs.next() ? Bukkit.getPlayer(rs.getString("CurrentPlayer")) : null;
-            stmt.close();
-            return result;
+    /**
+     * Holt die Startzeit eines Spielers in einer Welt.
+     */
+    public static Long getStartTime(World world, Player player) {
+        int jnrId = WorldRepository.getId(world.getName());
+        if (jnrId == -1) return null;
+
+        String sql = "SELECT startTime FROM ActiveRuns WHERE jnrId=? AND playerUUID=?";
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, jnrId);
+            ps.setString(2, player.getUniqueId().toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("startTime");
+                }
+            }
         } catch (SQLException e) {
-            log("Fehler beim Laden des Startspielers.");
+            log("Fehler beim Laden der Startzeit.");
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+
+    /**
+     * Entfernt den aktiven Run eines Spielers (z. B. nach Ziel erreicht).
+     */
+    public static void clearRun(World world, Player player) {
+        int jnrId = WorldRepository.getId(world.getName());
+        if (jnrId == -1) return;
+
+        String sql = "DELETE FROM ActiveRuns WHERE jnrId=? AND playerUUID=?";
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, jnrId);
+            ps.setString(2, player.getUniqueId().toString());
+            ps.executeUpdate();
+            log("Run von " + player.getName() + " in Welt " + world.getName() + " entfernt.");
+        } catch (SQLException e) {
+            log("Fehler beim Löschen eines aktiven Runs.");
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Entfernt alle aktiven Runs einer Welt (z. B. wenn die Welt gelöscht wird).
+     */
+    public static void clearRunsForWorld(String worldName) {
+        int jnrId = WorldRepository.getId(worldName);
+        if (jnrId == -1) return;
+
+        String sql = "DELETE FROM ActiveRuns WHERE jnrId=?";
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, jnrId);
+            int count = ps.executeUpdate();
+            log(count + " aktive Runs in Welt " + worldName + " entfernt.");
+        } catch (SQLException e) {
+            log("Fehler beim Löschen aller aktiven Runs einer Welt.");
             throw new RuntimeException(e);
         }
     }

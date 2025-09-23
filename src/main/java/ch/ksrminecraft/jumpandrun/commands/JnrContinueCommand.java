@@ -2,16 +2,15 @@ package ch.ksrminecraft.jumpandrun.commands;
 
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.listeners.WorldSwitchListener;
-import org.bukkit.Bukkit;
+import ch.ksrminecraft.jumpandrun.utils.WorldUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.WorldType;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
-import java.util.List;
 
 /**
  * Subcommand: /jnr continue <welt>
@@ -35,9 +34,9 @@ public class JnrContinueCommand implements CommandExecutor {
 
         String worldName = args[1];
 
-        // prüfen ob Welt existiert
+        // prüfen ob Welt existiert in DB
         if (!WorldRepository.exists(worldName)) {
-            player.sendMessage(ChatColor.RED + "Diese JumpAndRun-Welt existiert nicht.");
+            player.sendMessage(ChatColor.RED + "Diese JumpAndRun-Welt existiert nicht in der Datenbank.");
             return true;
         }
 
@@ -54,12 +53,8 @@ public class JnrContinueCommand implements CommandExecutor {
             return true;
         }
 
-        // Welt laden
-        World world = Bukkit.getWorld(worldName);
-        if (world == null) {
-            world = Bukkit.createWorld(new org.bukkit.WorldCreator(worldName));
-        }
-
+        // Welt über WorldUtils laden & registrieren
+        World world = WorldUtils.loadOrRegisterWorld(worldName, World.Environment.NORMAL, WorldType.FLAT);
         if (world == null) {
             player.sendMessage(ChatColor.RED + "Fehler beim Laden der Welt.");
             return true;
@@ -73,7 +68,7 @@ public class JnrContinueCommand implements CommandExecutor {
         if (tp == null) tp = world.getSpawnLocation();
         player.teleport(tp.add(0, 1, 0));
 
-        player.sendMessage(ChatColor.GREEN + "Du bist wieder in deiner JumpAndRun-Welt " + worldName + ".");
+        player.sendMessage(ChatColor.GREEN + "Du bist wieder in deiner JumpAndRun-Welt §e" + worldName + "§a.");
         return true;
     }
 }

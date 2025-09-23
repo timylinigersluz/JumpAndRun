@@ -64,10 +64,14 @@ public class JnrListCommand implements CommandExecutor {
             // Zeit formatieren
             String timeStr = (bestTime != null) ? TimeRepository.formatTime(bestTime) : "—";
 
+            // Alias oder Weltname anzeigen
+            String alias = WorldRepository.getAlias(worldName);
+            String displayName = (alias != null && !alias.isEmpty()) ? alias : worldName;
+
             // Status farbig
             String status = published ? ChatColor.GREEN + " [LIVE]" : ChatColor.YELLOW + " [DRAFT]";
 
-            sender.sendMessage(ChatColor.AQUA + worldName + status +
+            sender.sendMessage(ChatColor.AQUA + displayName + status +
                     ChatColor.GRAY + " | Leader: " + ChatColor.WHITE + leaderName +
                     ChatColor.GRAY + " | Zeit: " + ChatColor.WHITE + timeStr);
         }

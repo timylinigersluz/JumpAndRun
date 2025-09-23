@@ -16,7 +16,7 @@ import java.util.List;
 public class JnrTabCompleter implements TabCompleter {
 
     private static final List<String> SUBCOMMANDS = Arrays.asList(
-            "create", "delete", "teleport", "list", "ready", "continue", "abort"
+            "create", "delete", "teleport", "list", "ready", "continue", "abort", "name"
     );
 
     @Override
@@ -44,7 +44,11 @@ public class JnrTabCompleter implements TabCompleter {
                 case "teleport":
                 case "delete":
                     try {
-                        suggestions.addAll(WorldRepository.getPublishedWorlds());
+                        // Alias statt Weltname vorschlagen
+                        for (String world : WorldRepository.getPublishedWorlds()) {
+                            String aliasName = WorldRepository.getAlias(world);
+                            suggestions.add((aliasName != null && !aliasName.isEmpty()) ? aliasName : world);
+                        }
                     } catch (Exception e) {
                         suggestions.add("<keine veröffentlichten Welten>");
                     }

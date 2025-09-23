@@ -2,6 +2,7 @@ package ch.ksrminecraft.jumpandrun.utils;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.TimeRepository;
+import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -52,6 +53,10 @@ public class SignUpdater {
         }
         String timeStr = (bestTime != null) ? TimeUtils.formatMs(bestTime) : "—";
 
+        // Alias nutzen, falls vorhanden
+        String alias = WorldRepository.getAlias(worldName);
+        String displayName = (alias != null && !alias.isEmpty()) ? alias : worldName;
+
         for (Location loc : signs) {
             if (loc.getWorld() == null) continue; // Welt nicht geladen
             Block block = loc.getBlock();
@@ -59,7 +64,7 @@ public class SignUpdater {
 
             Sign sign = (Sign) block.getState();
             sign.setLine(0, ChatColor.DARK_BLUE + "[JNR-LEADER]");
-            sign.setLine(1, ChatColor.AQUA + worldName);
+            sign.setLine(1, ChatColor.AQUA + displayName);
             sign.setLine(2, ChatColor.YELLOW + leaderName);
             sign.setLine(3, ChatColor.GRAY + timeStr);
             sign.update();
@@ -67,7 +72,7 @@ public class SignUpdater {
 
         if (JumpAndRun.getConfigManager().isDebug()) {
             Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Alle Leader-Schilder für " +
-                    worldName + " aktualisiert (Leader=" + leaderName + ", Zeit=" + timeStr + ")");
+                    worldName + " aktualisiert (Alias=" + displayName + ", Leader=" + leaderName + ", Zeit=" + timeStr + ")");
         }
     }
 

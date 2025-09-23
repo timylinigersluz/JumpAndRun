@@ -1,6 +1,8 @@
 ch\ksrminecraft\jumpandrun\db\RunRepository.class
 ch\ksrminecraft\jumpandrun\listeners\WorldLockListener.class
 ch\ksrminecraft\jumpandrun\utils\IslandGenerator.class
+ch\ksrminecraft\jumpandrun\utils\PlayerUtils.class
+ch\ksrminecraft\jumpandrun\commands\JnrNameCommand.class
 ch\ksrminecraft\jumpandrun\db\DatabaseConnection.class
 ch\ksrminecraft\jumpandrun\utils\TestRunManager.class
 ch\ksrminecraft\jumpandrun\listeners\TestRunAbortListener.class
@@ -25,6 +27,8 @@ ch\ksrminecraft\jumpandrun\commands\JnrTabCompleter.class
 ch\ksrminecraft\jumpandrun\commands\JnrContinueCommand.class
 ch\ksrminecraft\jumpandrun\listeners\PressurePlateListener.class
 ch\ksrminecraft\jumpandrun\utils\TeleportUtils.class
+ch\ksrminecraft\jumpandrun\utils\WorldUtils.class
+ch\ksrminecraft\jumpandrun\utils\WorldSyncManager.class
 ch\ksrminecraft\jumpandrun\commands\JnrAbortCommand.class
 ch\ksrminecraft\jumpandrun\utils\TimeUtils.class
 ch\ksrminecraft\jumpandrun\db\WorldRepository.class

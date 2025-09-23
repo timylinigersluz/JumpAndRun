@@ -4,82 +4,74 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Speichert Laufzeiten pro Welt in eigenen Tabellen.
+ * Speichert Laufzeiten zentral in der Tabelle "JumpAndRunTimes".
  */
 public class TimeRepository {
 
     /**
-     * Initialisiert die Zeitentabelle für eine Welt.
-     */
-    public static void initializeTimeTable(World world) {
-        try {
-            Statement stmt = DatabaseConnection.getConnection().createStatement();
-            String sql = "CREATE TABLE IF NOT EXISTS `" + world.getName() + "` (" +
-                    "Player CHAR(36), " +
-                    "time BIGINT)";
-            stmt.execute(sql);
-            stmt.close();
-            log("Tabelle für Welt " + world.getName() + " geprüft/erstellt.");
-        } catch (SQLException e) {
-            log("Fehler beim Erstellen der Tabelle für Welt " + world.getName());
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * Speichert eine Zeit in der Datenbank.
+     * Speichert eine Zeit für einen Spieler in einer bestimmten Welt.
      */
     public static void inputTime(World world, Player player, long time) {
-        try {
-            Statement stmt = DatabaseConnection.getConnection().createStatement();
-            String sql = "INSERT INTO `" + world.getName() + "` (Player, time) VALUES ('" +
-                    player.getUniqueId() + "', " + time + ")";
-            stmt.execute(sql);
-            stmt.close();
+        int jnrId = WorldRepository.getId(world.getName());
+        if (jnrId == -1) {
+            log("Konnte keine ID für Welt " + world.getName() + " finden.");
+            return;
+        }
+
+        String sql = "INSERT INTO JumpAndRunTimes (jnrId, playerUUID, time) VALUES (?,?,?)";
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, jnrId);
+            ps.setString(2, player.getUniqueId().toString());
+            ps.setLong(3, time);
+            ps.executeUpdate();
             log("Zeit für " + player.getName() + " gespeichert (" + time + "ms).");
         } catch (SQLException e) {
-            log("Fehler beim Speichern der Zeit in Welt " + world.getName());
+            log("Fehler beim Speichern der Zeit.");
             throw new RuntimeException(e);
         }
     }
 
     public static Long getBestTime(String worldName) {
-        try {
-            Statement stmt = DatabaseConnection.getConnection().createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT MIN(time) as BestTime FROM `" + worldName + "`");
-            Long bestTime = null;
-            if (rs.next()) {
-                bestTime = rs.getLong("BestTime");
-                if (rs.wasNull()) bestTime = null;
+        int jnrId = WorldRepository.getId(worldName);
+        if (jnrId == -1) return null;
+
+        String sql = "SELECT MIN(time) as BestTime FROM JumpAndRunTimes WHERE jnrId = ?";
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, jnrId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    long best = rs.getLong("BestTime");
+                    return rs.wasNull() ? null : best;
+                }
             }
-            stmt.close();
-            return bestTime;
+            return null;
         } catch (SQLException e) {
-            log("Fehler beim Abfragen der Bestzeit für Welt " + worldName);
+            log("Fehler beim Abfragen der Bestzeit.");
             throw new RuntimeException(e);
         }
     }
 
     public static String getLeader(String worldName) {
-        try {
-            Statement stmt = DatabaseConnection.getConnection().createStatement();
-            String sql = "SELECT Player FROM `" + worldName + "` " +
-                    "WHERE time = (SELECT MIN(time) FROM `" + worldName + "`) LIMIT 1";
-            ResultSet rs = stmt.executeQuery(sql);
-            String leader = null;
-            if (rs.next()) {
-                leader = rs.getString("Player");
+        int jnrId = WorldRepository.getId(worldName);
+        if (jnrId == -1) return null;
+
+        String sql = "SELECT playerUUID FROM JumpAndRunTimes WHERE jnrId = ? " +
+                "AND time = (SELECT MIN(time) FROM JumpAndRunTimes WHERE jnrId = ?) LIMIT 1";
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, jnrId);
+            ps.setInt(2, jnrId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("playerUUID");
+                }
             }
-            stmt.close();
-            return leader;
+            return null;
         } catch (SQLException e) {
-            log("Fehler beim Abfragen des Leaders für Welt " + worldName);
+            log("Fehler beim Abfragen des Leaders.");
             throw new RuntimeException(e);
         }
     }

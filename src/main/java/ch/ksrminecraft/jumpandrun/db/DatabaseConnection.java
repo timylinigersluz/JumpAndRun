@@ -67,23 +67,54 @@ public class DatabaseConnection {
     /**
      * Erstellt die zentrale JumpAndRuns-Tabelle.
      */
-    public static void initializeWorldTable() {
-        try {
-            Statement stmt = getConnection().createStatement();
-            String sql = "CREATE TABLE IF NOT EXISTS JumpAndRuns (" +
-                    "JnrName VARCHAR(50), " +
-                    "Published BOOLEAN, " +
-                    "startLocationX INT, startLocationY INT, startLocationZ INT, " +
-                    "YLimit INT, " +
-                    "startTime TIME(3), " +
-                    "CurrentPlayer VARCHAR(36))";
-            stmt.execute(sql);
-            stmt.close();
-            log("Tabelle 'JumpAndRuns' geprüft/erstellt.");
+    public static void initializeWorldTables() {
+        try (Statement stmt = getConnection().createStatement()) {
+            // JumpAndRuns
+            stmt.execute("CREATE TABLE IF NOT EXISTS JumpAndRuns (" +
+                    "id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY," +
+                    "worldName VARCHAR(100) NOT NULL," +
+                    "alias VARCHAR(100) DEFAULT ''," +
+                    "creator CHAR(36) NOT NULL," +
+                    "published BOOLEAN DEFAULT false," +
+                    "ready BOOLEAN DEFAULT false," +
+                    "startLocationX INT, startLocationY INT, startLocationZ INT," +
+                    "yLimit INT," +
+                    "currentPlayer CHAR(36)," +
+                    "UNIQUE KEY unique_world (worldName)" +
+                    ") ENGINE=InnoDB");
+
+            // Laufzeiten
+            stmt.execute("CREATE TABLE IF NOT EXISTS JumpAndRunTimes (" +
+                    "id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY," +
+                    "jnrId INT UNSIGNED NOT NULL," +
+                    "playerUUID CHAR(36) NOT NULL," +
+                    "time BIGINT NOT NULL," +
+                    "created TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE," +
+                    "INDEX idx_jnr_times (jnrId, time)" +
+                    ") ENGINE=InnoDB");
+
+            // Checkpoints
+            stmt.execute("CREATE TABLE IF NOT EXISTS Checkpoints (" +
+                    "jnrId INT UNSIGNED NOT NULL," +
+                    "idx INT NOT NULL," +
+                    "x INT, y INT, z INT," +
+                    "PRIMARY KEY (jnrId, idx)," +
+                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE" +
+                    ") ENGINE=InnoDB");
+
+            // Aktive Runs (neu!)
+            stmt.execute("CREATE TABLE IF NOT EXISTS ActiveRuns (" +
+                    "jnrId INT UNSIGNED NOT NULL," +
+                    "playerUUID CHAR(36) NOT NULL," +
+                    "startTime BIGINT NOT NULL," +
+                    "PRIMARY KEY (jnrId, playerUUID)," +
+                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE" +
+                    ") ENGINE=InnoDB");
+
+            log("Tabellen JumpAndRuns, JumpAndRunTimes, Checkpoints und ActiveRuns geprüft/erstellt.");
         } catch (SQLException e) {
-            log("[ERROR] Fehler beim Erstellen der Tabelle 'JumpAndRuns'.");
-            log("[ERROR] SQLState=" + e.getSQLState() + " ErrorCode=" + e.getErrorCode() + " Message=" + e.getMessage());
-            throw new RuntimeException("Fehler beim Initialisieren der Tabelle JumpAndRuns", e);
+            throw new RuntimeException("Fehler beim Initialisieren der Tabellen", e);
         }
     }
 

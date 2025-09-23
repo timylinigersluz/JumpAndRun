@@ -6,8 +6,8 @@ softdepend: ['Multiverse-Core', 'WorldEdit', 'RankPointsAPI']
 
 commands:
   jnr:
-    description: Hauptbefehl für Jump and Run (/jnr create|delete|teleport|list|ready|continue|abort)
-    usage: /jnr <create|delete|teleport|list|ready|continue|abort>
+    description: Hauptbefehl für Jump and Run (/jnr create|delete|teleport|list|ready|continue|abort|name)
+    usage: /jnr <create|delete|teleport|list|ready|continue|abort|name>
     permission: jumpandrun.use
     aliases: [jumpandrun, jnrp]
 
@@ -55,3 +55,7 @@ permissions:
   jumpandrun.sign.leader:
     description: Erlaubt das Erstellen und Nutzen von Leader-Schildern
     default: true
+
+  jumpandrun.name:
+    description: Erlaubt das Setzen eines Alias-Namens für die JumpAndRun-Welt
+    default: op

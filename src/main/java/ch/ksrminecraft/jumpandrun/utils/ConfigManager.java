@@ -3,11 +3,16 @@ package ch.ksrminecraft.jumpandrun.utils;
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+
+import java.util.Set;
 
 /**
  * Zentraler Config-Manager für das JumpAndRun-Plugin.
  * Lädt Werte aus der config.yml und stellt sie dem restlichen Plugin bereit.
+ * Bereinigt ungültige LobbyLocations beim Start.
  */
 public class ConfigManager {
 
@@ -26,8 +31,10 @@ public class ConfigManager {
 
     /**
      * Liest alle benötigten Werte aus der config.yml ein.
+     * Entfernt ungültige LobbyLocations (Welt nicht mehr vorhanden).
      */
     public void loadConfig() {
+        plugin.reloadConfig();
         FileConfiguration config = plugin.getConfig();
 
         // Debugmodus
@@ -44,6 +51,24 @@ public class ConfigManager {
             this.startPlate = Material.HEAVY_WEIGHTED_PRESSURE_PLATE;
             this.endPlate = Material.LIGHT_WEIGHTED_PRESSURE_PLATE;
             this.checkpointPlate = Material.STONE_PRESSURE_PLATE;
+        }
+
+        // Ungültige LobbyLocations aufräumen
+        ConfigurationSection playersSection = config.getConfigurationSection("players");
+        if (playersSection != null) {
+            Set<String> playerKeys = playersSection.getKeys(false);
+            for (String uuid : playerKeys) {
+                String worldName = config.getString("players." + uuid + ".lobbyLocation.world");
+                if (worldName != null) {
+                    World world = Bukkit.getWorld(worldName);
+                    if (world == null) {
+                        // Welt existiert nicht -> Eintrag löschen
+                        config.set("players." + uuid + ".lobbyLocation", null);
+                        Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Ungültige LobbyLocation für Spieler " + uuid + " entfernt (Welt " + worldName + " nicht gefunden).");
+                    }
+                }
+            }
+            plugin.saveConfig();
         }
 
         if (debug) {

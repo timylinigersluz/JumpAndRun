@@ -2,8 +2,8 @@ package ch.ksrminecraft.jumpandrun.commands;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
-import ch.ksrminecraft.jumpandrun.db.TimeRepository;
 import ch.ksrminecraft.jumpandrun.utils.IslandGenerator;
+import ch.ksrminecraft.jumpandrun.utils.WorldUtils;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -31,7 +31,6 @@ public class JnrCreateCommand implements CommandExecutor {
         }
         Player player = (Player) sender;
 
-        // Permission-Check
         if (!player.hasPermission("jumpandrun.create")) {
             player.sendMessage(ChatColor.RED + "Du hast keine Berechtigung für /jnr create.");
             return true;
@@ -53,13 +52,8 @@ public class JnrCreateCommand implements CommandExecutor {
         // Dynamischer Weltname
         String worldId = "JumpAndRun_" + player.getName() + "_" + UUID.randomUUID().toString().substring(0, 8);
 
-        // Welt laden/erstellen
-        WorldCreator creator = new WorldCreator(worldId)
-                .environment(World.Environment.NORMAL)
-                .type(WorldType.FLAT)
-                .generateStructures(false);
-
-        World world = Bukkit.createWorld(creator);
+        // Welt erstellen & in MV registrieren
+        World world = WorldUtils.loadOrRegisterWorld(worldId, World.Environment.NORMAL, WorldType.FLAT);
         if (world == null) {
             player.sendMessage(ChatColor.RED + "Fehler beim Erstellen der Welt!");
             return true;
@@ -75,19 +69,8 @@ public class JnrCreateCommand implements CommandExecutor {
         // Datenbank registrieren
         WorldRepository.registerWorld(start, JumpAndRun.height, player.getUniqueId().toString());
 
-        // ZEITENTABELLE INITIALISIEREN
-        try {
-            TimeRepository.initializeTimeTable(world);
-            Bukkit.getConsoleSender().sendMessage("[JNR-DB] Zeitentabelle für Welt " + worldId + " erstellt/geprüft.");
-        } catch (Exception e) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-ERROR] Konnte Zeitentabelle für Welt " + worldId + " nicht initialisieren!");
-            e.printStackTrace();
-        }
-
-        // Teleport Spieler
+        // Spieler teleportieren
         Location tpLoc = start.clone().add(0, JumpAndRun.height + 1, 0);
-
-        // Spieler soll Richtung Zielinsel schauen
         tpLoc.setDirection(goal.toVector().subtract(tpLoc.toVector()));
 
         player.teleport(tpLoc);

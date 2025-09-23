@@ -3,6 +3,7 @@ package ch.ksrminecraft.jumpandrun.listeners;
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.CheckpointRepository;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
+import ch.ksrminecraft.jumpandrun.utils.PlayerUtils;
 import ch.ksrminecraft.jumpandrun.utils.TestRunManager;
 import ch.ksrminecraft.jumpandrun.utils.TimeManager;
 import org.bukkit.Bukkit;
@@ -45,9 +46,18 @@ public class PressurePlateListener implements Listener {
 
         // Startdruckplatte → Zeit starten
         if (blockType == startPlate) {
-            TimeManager.inputStartTime(clickedBlock.getWorld(), player);
-            player.sendMessage(ChatColor.YELLOW + "Dein Lauf hat begonnen!");
-            debug(player.getName() + " hat die Startdruckplatte in Welt " + worldName + " betreten.");
+            if (TestRunManager.isTesting(player) || WorldRepository.isPublished(worldName)) {
+                // Spielerwerte zurücksetzen für fairen Start
+                PlayerUtils.resetState(player);
+
+                // Startzeit speichern
+                TimeManager.inputStartTime(clickedBlock.getWorld(), player);
+
+                player.sendMessage(ChatColor.YELLOW + "Dein Lauf hat begonnen!");
+                debug(player.getName() + " hat die Startdruckplatte in Welt " + worldName + " betreten (Run gestartet, Werte reset).");
+            } else {
+                player.sendMessage(ChatColor.RED + "Dieses JumpAndRun ist noch nicht bereit.");
+            }
         }
 
         // Checkpoint

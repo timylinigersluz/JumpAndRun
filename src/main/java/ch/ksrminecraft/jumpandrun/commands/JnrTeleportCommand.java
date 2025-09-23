@@ -13,7 +13,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
- * Subcommand: /jnr teleport <welt>
+ * Subcommand: /jnr teleport <alias>
  */
 public class JnrTeleportCommand implements CommandExecutor {
 
@@ -37,14 +37,21 @@ public class JnrTeleportCommand implements CommandExecutor {
 
         // Argument prüfen
         if (args.length < 2) {
-            player.sendMessage(ChatColor.RED + "Usage: /jnr teleport <welt>");
+            player.sendMessage(ChatColor.RED + "Usage: /jnr teleport <alias>");
             return true;
         }
-        String worldName = args[1];
+
+        String aliasOrWorld = args[1];
+
+        // Alias → WorldName auflösen
+        String worldName = WorldRepository.getWorldByAlias(aliasOrWorld);
+        if (worldName == null) {
+            worldName = aliasOrWorld; // Fallback: direkter Weltname
+        }
 
         World world = Bukkit.getWorld(worldName);
         if (world == null) {
-            player.sendMessage(ChatColor.RED + "Die JumpAndRun-Welt " + worldName + " existiert nicht.");
+            player.sendMessage(ChatColor.RED + "Die JumpAndRun-Welt " + aliasOrWorld + " existiert nicht.");
             return true;
         }
 
@@ -71,13 +78,17 @@ public class JnrTeleportCommand implements CommandExecutor {
             return true;
         }
 
+        // Alias für Anzeige
+        String alias = WorldRepository.getAlias(worldName);
+        String displayName = (alias != null && !alias.isEmpty()) ? alias : worldName;
+
         // Teleport
         player.teleport(spawn.clone().add(0, JumpAndRun.height + 1, 0));
-        player.sendMessage(ChatColor.GREEN + "Du wurdest zur JumpAndRun-Insel " + worldName + " teleportiert!");
+        player.sendMessage(ChatColor.GREEN + "Du wurdest zur JumpAndRun-Insel §e" + displayName + " §a teleportiert!");
 
         if (JumpAndRun.getConfigManager().isDebug()) {
             Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler "
-                    + player.getName() + " wurde in Welt " + worldName + " teleportiert.");
+                    + player.getName() + " wurde in Welt " + worldName + " teleportiert (Alias=" + displayName + ").");
         }
 
         return true;

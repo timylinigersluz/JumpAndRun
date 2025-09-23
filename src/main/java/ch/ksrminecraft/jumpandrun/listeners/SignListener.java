@@ -20,8 +20,8 @@ import java.util.UUID;
 /**
  * Listener für JumpAndRun-Schilder.
  * Unterstützt:
- * - [JNR] <welt> → Start-Schild (Teleport zum Startpunkt)
- * - [JNR-LEADER] <welt> → Leader-Schild (zeigt besten Spieler + Zeit)
+ * - [JNR] <alias> → Start-Schild (Teleport zum Startpunkt)
+ * - [JNR-LEADER] <alias> → Leader-Schild (zeigt besten Spieler + Zeit)
  */
 public class SignListener implements Listener {
 
@@ -39,23 +39,24 @@ public class SignListener implements Listener {
                 return;
             }
 
-            String worldName = event.getLine(1);
-            if (worldName == null || worldName.isEmpty()) {
-                player.sendMessage(ChatColor.RED + "Bitte gib in Zeile 2 den Welt-Namen an.");
+            String alias = event.getLine(1);
+            if (alias == null || alias.isEmpty()) {
+                player.sendMessage(ChatColor.RED + "Bitte gib in Zeile 2 den Namen (Alias) an.");
                 return;
             }
 
-            if (!WorldRepository.isPublished(worldName)) {
-                player.sendMessage(ChatColor.RED + "Diese Welt ist nicht veröffentlicht.");
+            String worldName = WorldRepository.getWorldByAlias(alias);
+            if (worldName == null || !WorldRepository.isPublished(worldName)) {
+                player.sendMessage(ChatColor.RED + "Dieses JumpAndRun existiert nicht oder ist nicht veröffentlicht.");
                 return;
             }
 
             event.setLine(0, ChatColor.DARK_GREEN + "[JNR]");
-            event.setLine(1, ChatColor.AQUA + worldName);
+            event.setLine(1, ChatColor.AQUA + alias);
             event.setLine(2, ChatColor.YELLOW + ">> Start <<");
             event.setLine(3, ChatColor.GRAY + "Klicke zum Spielen");
 
-            player.sendMessage(ChatColor.GREEN + "Start-Schild für " + worldName + " erstellt.");
+            player.sendMessage(ChatColor.GREEN + "Start-Schild für " + alias + " erstellt.");
         }
 
         // Leader-Schild
@@ -65,14 +66,15 @@ public class SignListener implements Listener {
                 return;
             }
 
-            String worldName = event.getLine(1);
-            if (worldName == null || worldName.isEmpty()) {
-                player.sendMessage(ChatColor.RED + "Bitte gib in Zeile 2 den Welt-Namen an.");
+            String alias = event.getLine(1);
+            if (alias == null || alias.isEmpty()) {
+                player.sendMessage(ChatColor.RED + "Bitte gib in Zeile 2 den Namen (Alias) an.");
                 return;
             }
 
-            if (!WorldRepository.isPublished(worldName)) {
-                player.sendMessage(ChatColor.RED + "Diese Welt ist nicht veröffentlicht.");
+            String worldName = WorldRepository.getWorldByAlias(alias);
+            if (worldName == null || !WorldRepository.isPublished(worldName)) {
+                player.sendMessage(ChatColor.RED + "Dieses JumpAndRun existiert nicht oder ist nicht veröffentlicht.");
                 return;
             }
 
@@ -83,14 +85,14 @@ public class SignListener implements Listener {
             String timeStr = (bestTime != null) ? TimeUtils.formatMs(bestTime) : "—";
 
             event.setLine(0, ChatColor.DARK_BLUE + "[JNR-LEADER]");
-            event.setLine(1, ChatColor.AQUA + worldName);
+            event.setLine(1, ChatColor.AQUA + alias);
             event.setLine(2, ChatColor.YELLOW + (leaderName != null ? leaderName : "—"));
             event.setLine(3, ChatColor.GRAY + timeStr);
 
             // Schild registrieren für spätere Updates
             SignUpdater.registerLeaderSign(worldName, event.getBlock().getLocation());
 
-            player.sendMessage(ChatColor.GREEN + "Leader-Schild für " + worldName + " erstellt.");
+            player.sendMessage(ChatColor.GREEN + "Leader-Schild für " + alias + " erstellt.");
         }
     }
 
@@ -101,9 +103,9 @@ public class SignListener implements Listener {
 
         Sign sign = (Sign) event.getClickedBlock().getState();
         String line0 = ChatColor.stripColor(sign.getLine(0));
-        String worldName = ChatColor.stripColor(sign.getLine(1));
+        String alias = ChatColor.stripColor(sign.getLine(1));
 
-        if (line0 == null || worldName == null) return;
+        if (line0 == null || alias == null) return;
 
         Player player = event.getPlayer();
 
@@ -114,7 +116,8 @@ public class SignListener implements Listener {
                 return;
             }
 
-            if (!WorldRepository.isPublished(worldName)) {
+            String worldName = WorldRepository.getWorldByAlias(alias);
+            if (worldName == null || !WorldRepository.isPublished(worldName)) {
                 player.sendMessage("§cDieses JumpAndRun ist nicht verfügbar.");
                 return;
             }
@@ -126,11 +129,11 @@ public class SignListener implements Listener {
             }
 
             player.teleport(start.clone().add(0, JumpAndRun.height + 1, 0));
-            player.sendMessage("§aTeleportiert zum Start von " + worldName);
+            player.sendMessage("§aTeleportiert zum Start von " + alias);
 
             if (JumpAndRun.getConfigManager().isDebug()) {
                 Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName() +
-                        " hat Start-Schild von Welt " + worldName + " benutzt.");
+                        " hat Start-Schild von Welt " + worldName + " benutzt (Alias=" + alias + ").");
             }
         }
     }

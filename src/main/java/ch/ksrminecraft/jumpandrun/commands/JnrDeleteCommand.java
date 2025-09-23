@@ -1,6 +1,5 @@
 package ch.ksrminecraft.jumpandrun.commands;
 
-import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -9,13 +8,15 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.mvplugins.multiverse.core.MultiverseCoreApi;
+import org.mvplugins.multiverse.core.world.WorldManager;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
 /**
- * Subcommand: /jnr delete <weltname>
+ * Subcommand: /jnr delete <alias>
  */
 public class JnrDeleteCommand implements CommandExecutor {
 
@@ -27,43 +28,61 @@ public class JnrDeleteCommand implements CommandExecutor {
         }
         Player player = (Player) sender;
 
-        // Permission-Check
         if (!player.hasPermission("jumpandrun.delete")) {
             player.sendMessage(ChatColor.RED + "Du hast keine Berechtigung für /jnr delete.");
             return true;
         }
 
         if (args.length < 2) {
-            player.sendMessage(ChatColor.RED + "Verwendung: /jnr delete <weltname>");
+            player.sendMessage(ChatColor.RED + "Verwendung: /jnr delete <alias>");
             return true;
         }
 
-        String worldName = args[1];
+        String aliasOrWorld = args[1];
 
-        // Spieler zurück in Main-World
+        // Alias → Weltname auflösen
+        String worldName = WorldRepository.getWorldByAlias(aliasOrWorld);
+        if (worldName == null) {
+            worldName = aliasOrWorld; // Fallback: direkter Weltname
+        }
+
+        // Für Anzeige den Alias nehmen, falls vorhanden
+        String alias = WorldRepository.getAlias(worldName);
+        String displayName = (alias != null && !alias.isEmpty()) ? alias : worldName;
+
+        // Spieler zurück in Main-World teleportieren
         World mainWorld = Bukkit.getWorld("world");
         if (mainWorld != null) {
             player.teleport(mainWorld.getSpawnLocation());
         }
 
-        // Welt löschen
+        // Welt entladen & löschen
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             Bukkit.unloadWorld(world, false);
-            WorldRepository.removeWorld(world.getName());
+            WorldRepository.removeWorld(worldName);
+
+            // auch in Multiverse-Core deregistrieren
+            try {
+                MultiverseCoreApi mvApi = MultiverseCoreApi.get();
+                WorldManager wm = mvApi.getWorldManager();
+                wm.removeWorld(worldName);
+            } catch (Exception ignored) {
+                Bukkit.getConsoleSender().sendMessage("[JNR-DB] Konnte Welt " + worldName + " nicht aus MV-Core deregistrieren.");
+            }
 
             // Ordner löschen
             File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
             try {
                 deleteDirectory(worldFolder);
-                player.sendMessage(ChatColor.GREEN + "JumpAndRun Welt " + worldName + " vollständig gelöscht.");
-                Bukkit.getConsoleSender().sendMessage("[JNR] Welt " + worldName + " und Dateien gelöscht.");
+                player.sendMessage(ChatColor.GREEN + "JumpAndRun §e" + displayName + ChatColor.GREEN + " wurde vollständig gelöscht.");
+                Bukkit.getConsoleSender().sendMessage("[JNR] Welt " + worldName + " (Alias=" + displayName + ") und Dateien gelöscht.");
             } catch (IOException e) {
                 player.sendMessage(ChatColor.RED + "Welt entladen, aber Dateien konnten nicht gelöscht werden.");
                 e.printStackTrace();
             }
         } else {
-            player.sendMessage(ChatColor.RED + "Die Welt " + worldName + " existiert nicht.");
+            player.sendMessage(ChatColor.RED + "Die Welt §e" + displayName + ChatColor.RED + " existiert nicht.");
         }
 
         return true;

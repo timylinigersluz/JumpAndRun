@@ -2,6 +2,7 @@ package ch.ksrminecraft.jumpandrun.listeners;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
+import ch.ksrminecraft.jumpandrun.utils.PlayerUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -12,6 +13,8 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 /**
  * Listener, der Spieler nach einem Tod zum letzten Checkpoint
  * (oder zum Startpunkt) zurücksetzt, ohne den Timer zurückzusetzen.
+ * Nur für echte JumpAndRun-Welten (DB geprüft).
+ * Reset von Health, Hunger und Sättigung für faire Bedingungen.
  */
 public class CheckpointRespawnListener implements Listener {
 
@@ -20,39 +23,63 @@ public class CheckpointRespawnListener implements Listener {
         Player player = event.getEntity();
         String worldName = player.getWorld().getName();
 
-        // Nur für registrierte JnR-Welten
-        if (!WorldRepository.isPublished(worldName) && !JumpAndRun.getConfigManager().isDebug()) {
+        // Nur reagieren, wenn es eine registrierte JnR-Welt ist
+        if (!WorldRepository.exists(worldName)) {
+            if (JumpAndRun.getConfigManager().isDebug()) {
+                Bukkit.getConsoleSender().sendMessage(
+                        "[JNR-DEBUG] Spieler " + player.getName() +
+                                " ist in Welt " + worldName +
+                                " gestorben (keine JnR-Welt → kein Respawn-Handling)."
+                );
+            }
             return;
         }
 
-        // Prüfen ob Spieler einen Checkpoint hat
+        // Ziel bestimmen: Checkpoint oder Start
         Location checkpoint = PressurePlateListener.getLastCheckpoint(player);
-
-        Location target = null;
-        if (checkpoint != null) {
-            target = checkpoint.clone().add(0, 1, 0);
-        } else {
-            target = WorldRepository.getStartLocation(worldName);
-            if (target != null) {
-                target = target.clone().add(0, 1, 0);
-            }
-        }
+        Location target = (checkpoint != null)
+                ? checkpoint.clone().add(0, 1, 0)
+                : WorldRepository.getStartLocation(worldName) != null
+                ? WorldRepository.getStartLocation(worldName).clone().add(0, 1, 0)
+                : null;
 
         if (target == null) {
             if (JumpAndRun.getConfigManager().isDebug()) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Keine Respawn-Location für Spieler "
-                        + player.getName() + " in Welt " + worldName + " gefunden.");
+                Bukkit.getConsoleSender().sendMessage(
+                        "[JNR-DEBUG] Keine Respawn-Location für Spieler " +
+                                player.getName() + " in Welt " + worldName + " gefunden."
+                );
             }
             return;
         }
 
-        // Teleport nach Respawn (muss delayed passieren!)
+        // Respawn muss 1 Tick delayed passieren
         Location finalTarget = target;
         Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
-            if (player.isOnline() && player.getWorld().getName().equals(worldName)) {
-                player.teleport(finalTarget);
-                player.sendMessage("§eDu wurdest zu deinem letzten Checkpoint zurückgesetzt.");
+            if (!player.isOnline()) return;
+            if (!player.getWorld().getName().equals(worldName)) return;
+
+            // Spielerzustände resetten (Health, Hunger, Saturation, FallDamage)
+            PlayerUtils.resetState(player);
+
+            // Teleport
+            player.teleport(finalTarget);
+            player.sendMessage("§eDu wurdest zu deinem letzten Checkpoint zurückgesetzt.");
+
+            if (JumpAndRun.getConfigManager().isDebug()) {
+                Bukkit.getConsoleSender().sendMessage(
+                        "[JNR-DEBUG] Spieler " + player.getName() +
+                                " wurde nach Tod zu " + formatLocation(finalTarget) +
+                                " teleportiert (ActiveRun bleibt bestehen, Timer läuft weiter)."
+                );
             }
         }, 1L);
+    }
+
+    private String formatLocation(Location loc) {
+        return String.format("(%s | x=%.1f, y=%.1f, z=%.1f)",
+                loc.getWorld() != null ? loc.getWorld().getName() : "null",
+                loc.getX(), loc.getY(), loc.getZ()
+        );
     }
 }

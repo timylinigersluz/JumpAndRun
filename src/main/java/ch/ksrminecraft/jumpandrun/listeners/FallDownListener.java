@@ -1,7 +1,9 @@
 package ch.ksrminecraft.jumpandrun.listeners;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
+import ch.ksrminecraft.jumpandrun.db.RunRepository;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
+import ch.ksrminecraft.jumpandrun.utils.PlayerUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -14,6 +16,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
  * Listener, der Spielerbewegungen überwacht und bei einem Sturz
  * unterhalb der hinterlegten Y-Grenze zurück zum letzten Checkpoint
  * (oder Startpunkt, falls keiner existiert) teleportiert.
+ * Bricht außerdem den aktuellen Run ab und setzt Spielerwerte zurück.
  */
 public class FallDownListener implements Listener {
 
@@ -46,14 +49,13 @@ public class FallDownListener implements Listener {
                 if (start != null) {
                     teleportLocation = start.clone().add(0, JumpAndRun.height + 1, 0);
 
-                    // Blickrichtung zur Zielinsel setzen (einfach: +20 Blöcke auf X-Achse)
+                    // Blickrichtung zur Zielinsel setzen
                     Location goal = new Location(world, start.getX() + 20, start.getY(), start.getZ());
                     teleportLocation.setDirection(goal.toVector().subtract(teleportLocation.toVector()));
                 }
             }
 
-            // 3. Sicherheitscheck
-            if (teleportLocation == null || teleportLocation.getWorld() == null) {
+            if (teleportLocation == null) {
                 if (JumpAndRun.getConfigManager().isDebug()) {
                     Bukkit.getConsoleSender().sendMessage(
                             "[JNR-DEBUG] Keine gültige Teleport-Location für Welt " + worldName + " gefunden."
@@ -62,23 +64,24 @@ public class FallDownListener implements Listener {
                 return;
             }
 
-            // Teleport durchführen
-            player.setFallDistance(0);
+            // Spieler zurücksetzen und teleportieren
+            PlayerUtils.resetState(player);
             player.teleport(teleportLocation);
+
+            // Run zurücksetzen
+            RunRepository.clearRun(world, player);
 
             if (JumpAndRun.getConfigManager().isDebug()) {
                 Bukkit.getConsoleSender().sendMessage(
                         "[JNR-DEBUG] Spieler " + player.getName() +
-                                " ist unter Y=" + yLimit + " gefallen und wurde nach " +
-                                formatLocation(teleportLocation) + " teleportiert."
+                                " ist unter Y=" + yLimit +
+                                " gefallen → Teleport nach " + formatLocation(teleportLocation) +
+                                " & ActiveRun gelöscht."
                 );
             }
         }
     }
 
-    /**
-     * Hilfsmethode zur Formatierung einer Location für Debug-Logs.
-     */
     private String formatLocation(Location loc) {
         return String.format("(%s | x=%.1f, y=%.1f, z=%.1f)",
                 loc.getWorld() != null ? loc.getWorld().getName() : "null",
