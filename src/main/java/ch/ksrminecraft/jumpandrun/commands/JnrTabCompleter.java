@@ -24,7 +24,7 @@ public class JnrTabCompleter implements TabCompleter {
         List<String> suggestions = new ArrayList<>();
 
         if (args.length == 1) {
-            // Vorschläge für Subcommands
+            // Subcommands vorschlagen
             for (String sub : SUBCOMMANDS) {
                 if (sub.toLowerCase().startsWith(args[0].toLowerCase())) {
                     suggestions.add(sub);
@@ -33,8 +33,8 @@ public class JnrTabCompleter implements TabCompleter {
             return suggestions;
         }
 
-        if (args.length == 2) {
-            if (!(sender instanceof Player)) return suggestions;
+        if (args.length == 2 && sender instanceof Player) {
+            Player player = (Player) sender;
 
             switch (args[0].toLowerCase()) {
                 case "create":
@@ -44,10 +44,13 @@ public class JnrTabCompleter implements TabCompleter {
                 case "teleport":
                 case "delete":
                     try {
-                        // Alias statt Weltname vorschlagen
                         for (String world : WorldRepository.getPublishedWorlds()) {
                             String aliasName = WorldRepository.getAlias(world);
-                            suggestions.add((aliasName != null && !aliasName.isEmpty()) ? aliasName : world);
+                            if (aliasName != null && !aliasName.isEmpty()) {
+                                suggestions.add(aliasName); // Alias bevorzugen
+                            } else {
+                                suggestions.add(world); // Fallback: interner Name
+                            }
                         }
                     } catch (Exception e) {
                         suggestions.add("<keine veröffentlichten Welten>");
@@ -56,18 +59,16 @@ public class JnrTabCompleter implements TabCompleter {
 
                 case "continue":
                     try {
-                        suggestions.addAll(WorldRepository.getDraftWorldsOf(((Player) sender).getUniqueId()));
+                        suggestions.addAll(WorldRepository.getDraftWorldsOf(player.getUniqueId()));
                     } catch (Exception e) {
                         suggestions.add("<keine Draft-Welten>");
                     }
                     break;
 
                 case "abort":
-                    // Direkt die Optionen anbieten
                     suggestions.addAll(Arrays.asList("keepworld", "deleteworld"));
                     break;
             }
-            return suggestions;
         }
 
         return suggestions;

@@ -54,15 +54,12 @@ public class JnrReadyCommand implements CommandExecutor {
         player.teleport(tpLoc);
         player.setGameMode(GameMode.ADVENTURE);
 
-        // TestRun setzen, aber Zeit NICHT starten
-        TestRunManager.startTest(player);
+        // Spieler nur vorbereiten (Zeit startet noch nicht!)
+        TestRunManager.prepareTest(player);
 
         // Feedback
         player.sendMessage(ChatColor.GREEN + "✔ Testmodus gestartet!");
         player.sendMessage(ChatColor.GRAY + "Die Zeit startet erst, wenn du die §eStartdruckplatte§7 betrittst.");
-        player.sendMessage(ChatColor.AQUA + "Bitte gib deinem JumpAndRun jetzt einen Namen:");
-        player.sendMessage(ChatColor.YELLOW + "→ Verwende dazu §f/jnr name <alias>");
-        player.sendMessage(ChatColor.GRAY + "   (Dieser Name wird später auf Schildern und in Listen angezeigt.)");
 
         Bukkit.getConsoleSender().sendMessage("[JNR] Spieler " + player.getName() + " testet Welt " + world.getName());
 

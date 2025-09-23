@@ -62,7 +62,7 @@ public class SignListener implements Listener {
         // Leader-Schild
         else if (firstLine.equalsIgnoreCase("[JNR-LEADER]")) {
             if (!player.hasPermission("jumpandrun.sign.leader")) {
-                player.sendMessage(ChatColor.RED + "Du darfst keine Leader-Schilder erstellen.");
+                player.sendMessage(ChatColor.RED + "Du darfst keine Leader-Schilder erstellen");
                 return;
             }
 

@@ -289,4 +289,32 @@ public class WorldRepository {
     private static void log(String msg) {
         Bukkit.getConsoleSender().sendMessage("[JNR-DB] " + msg);
     }
+
+    public static int ensureExists(String worldName) {
+        int id = getId(worldName);
+        if (id != -1) {
+            return id;
+        }
+
+        String sql = "INSERT INTO JumpAndRuns (worldName, alias, creator, published, ready, " +
+                "startLocationX, startLocationY, startLocationZ, yLimit, currentPlayer) " +
+                "VALUES (?, NULL, NULL, false, false, 0, 0, 0, 0, NULL)";
+        try (PreparedStatement ps = DatabaseConnection.getConnection()
+                .prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, worldName);
+            ps.executeUpdate();
+
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    int newId = rs.getInt(1);
+                    log("Welt " + worldName + " automatisch registriert (ID=" + newId + ").");
+                    return newId;
+                }
+            }
+        } catch (SQLException e) {
+            log("Fehler beim automatischen Registrieren der Welt " + worldName);
+            e.printStackTrace();
+        }
+        return -1;
+    }
 }

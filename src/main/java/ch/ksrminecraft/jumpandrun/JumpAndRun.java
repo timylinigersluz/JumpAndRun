@@ -91,6 +91,9 @@ public final class JumpAndRun extends JavaPlugin {
         pm.registerEvents(new CheckpointRespawnListener(), this);
         pm.registerEvents(new WorldLockListener(), this);
 
+        // AliasPrompt aktivieren
+        ch.ksrminecraft.jumpandrun.utils.AliasPromptManager.init();
+
         // Command-Dispatcher
         if (getCommand("jnr") != null) {
             getCommand("jnr").setExecutor((sender, cmd, label, args) -> {

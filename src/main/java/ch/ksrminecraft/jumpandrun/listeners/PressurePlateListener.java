@@ -44,15 +44,18 @@ public class PressurePlateListener implements Listener {
         Material endPlate = JumpAndRun.getConfigManager().getEndPlate();
         Material checkpointPlate = JumpAndRun.getConfigManager().getCheckpointPlate();
 
-        // Startdruckplatte → Zeit starten
+        // Startdruckplatte
         if (blockType == startPlate) {
-            if (TestRunManager.isTesting(player) || WorldRepository.isPublished(worldName)) {
-                // Spielerwerte zurücksetzen für fairen Start
+            if (TestRunManager.isPrepared(player)) {
+                // Spieler war vorbereitet → jetzt Zeit starten
                 PlayerUtils.resetState(player);
-
-                // Startzeit speichern
+                TestRunManager.startTest(player);
+                player.sendMessage(ChatColor.YELLOW + "Dein Testlauf hat begonnen!");
+                debug(player.getName() + " hat die Startdruckplatte in Welt " + worldName + " betreten → Testlauf gestartet.");
+            } else if (WorldRepository.isPublished(worldName)) {
+                // published Welt → normales Spielen
+                PlayerUtils.resetState(player);
                 TimeManager.inputStartTime(clickedBlock.getWorld(), player);
-
                 player.sendMessage(ChatColor.YELLOW + "Dein Lauf hat begonnen!");
                 debug(player.getName() + " hat die Startdruckplatte in Welt " + worldName + " betreten (Run gestartet, Werte reset).");
             } else {
@@ -77,28 +80,22 @@ public class PressurePlateListener implements Listener {
         // Zieldruckplatte
         else if (blockType == endPlate) {
             if (TestRunManager.isTesting(player)) {
-                // Herkunfts-Location laden
-                Location origin = WorldSwitchListener.getOrigin(player);
-                if (origin != null) {
-                    player.teleport(origin);
-                    WorldSwitchListener.clearOrigin(player);
-                } else {
-                    // Fallback Lobby-Spawn
-                    player.teleport(Bukkit.getWorld("world").getSpawnLocation());
-                }
-
-                // Meldungen
-                player.sendMessage(ChatColor.GREEN + "✔ Test erfolgreich abgeschlossen!");
-                player.sendMessage(ChatColor.AQUA + "Das JumpAndRun ist jetzt startklar.");
-                player.sendMessage(ChatColor.YELLOW + "Platziere ein Schild, um es öffentlich zugänglich zu machen.");
-
-                // Schild ins Inventar
-                player.getInventory().addItem(new ItemStack(Material.OAK_SIGN, 1));
-
+                // 1. Zeit stoppen & speichern
+                TimeManager.calcTime(clickedBlock.getWorld(), player);
                 TestRunManager.completeTest(player);
-                debug("Ersteller " + player.getName() + " hat seinen Test-Run abgeschlossen.");
+
+                // 2. Erfolgsmeldung
+                player.sendMessage(ChatColor.GREEN + "✔ Funktionstest erfolgreich abgeschlossen!");
+                player.sendMessage(ChatColor.AQUA + "Dein JumpAndRun ist fast bereit für die Veröffentlichung.");
+
+                // 3. Prompt aktivieren
+                ch.ksrminecraft.jumpandrun.utils.AliasPromptManager.awaitAliasInput(player, worldName);
+
+                // Debug
+                debug("Ersteller " + player.getName() + " hat den Funktionstest abgeschlossen → AliasPrompt gestartet.");
             } else {
                 if (WorldRepository.isPublished(worldName)) {
+                    // Normaler Spieler beendet einen Run
                     TimeManager.calcTime(clickedBlock.getWorld(), player);
                     debug(player.getName() + " hat die Zieldruckplatte in Welt " + worldName + " betreten (Zeit gespeichert).");
                 } else {

@@ -13,6 +13,7 @@ ch\ksrminecraft\jumpandrun\commands\JnrTeleportCommand.class
 ch\ksrminecraft\jumpandrun\utils\PointsService.class
 ch\ksrminecraft\jumpandrun\utils\WorldLockManager.class
 ch\ksrminecraft\jumpandrun\commands\JnrListCommand.class
+ch\ksrminecraft\jumpandrun\utils\AliasPromptManager.class
 ch\ksrminecraft\jumpandrun\JumpAndRun.class
 ch\ksrminecraft\jumpandrun\listeners\FallDownListener.class
 ch\ksrminecraft\jumpandrun\listeners\SignListener.class

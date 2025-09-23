@@ -1,5 +1,6 @@
 package ch.ksrminecraft.jumpandrun.commands;
 
+import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.listeners.WorldSwitchListener;
 import ch.ksrminecraft.jumpandrun.utils.WorldUtils;
@@ -60,15 +61,23 @@ public class JnrContinueCommand implements CommandExecutor {
             return true;
         }
 
-        // Herkunft speichern
+        // Herkunft speichern (Lobby)
         WorldSwitchListener.setOrigin(player, player.getLocation());
 
-        // Spieler teleportieren
-        Location tp = WorldRepository.getStartLocation(worldName);
-        if (tp == null) tp = world.getSpawnLocation();
-        player.teleport(tp.add(0, 1, 0));
+        // Startposition aus DB
+        Location start = WorldRepository.getStartLocation(worldName);
+        if (start == null) {
+            start = world.getSpawnLocation();
+        }
 
-        player.sendMessage(ChatColor.GREEN + "Du bist wieder in deiner JumpAndRun-Welt §e" + worldName + "§a.");
+        // Teleport in Mitte der Startinsel
+        Location tpLoc = start.clone().add(0, JumpAndRun.height + 1, 0);
+        Location goal = new Location(world, start.getX() + 20, start.getY(), start.getZ()); // grob Zielinsel
+        tpLoc.setDirection(goal.toVector().subtract(tpLoc.toVector()));
+
+        player.teleport(tpLoc);
+        player.sendMessage(ChatColor.GREEN + "✔ Du bist wieder in deiner JumpAndRun-Welt §e" + worldName + "§a.");
+
         return true;
     }
 }

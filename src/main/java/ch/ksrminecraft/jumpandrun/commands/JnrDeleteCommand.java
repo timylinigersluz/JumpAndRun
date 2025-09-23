@@ -9,21 +9,20 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.mvplugins.multiverse.core.MultiverseCoreApi;
+import org.mvplugins.multiverse.core.world.MultiverseWorld;
 import org.mvplugins.multiverse.core.world.WorldManager;
+import org.mvplugins.multiverse.core.world.options.DeleteWorldOptions;
+import org.mvplugins.multiverse.core.utils.result.Attempt;
+import org.mvplugins.multiverse.core.world.reasons.DeleteFailureReason;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+import java.util.Collections;
 
-/**
- * Subcommand: /jnr delete <alias>
- */
 public class JnrDeleteCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage("Dieser Befehl kann nur von Spielern verwendet werden.");
+            sender.sendMessage("§cNur Spieler können diesen Befehl nutzen.");
             return true;
         }
         Player player = (Player) sender;
@@ -43,7 +42,7 @@ public class JnrDeleteCommand implements CommandExecutor {
         // Alias → Weltname auflösen
         String worldName = WorldRepository.getWorldByAlias(aliasOrWorld);
         if (worldName == null) {
-            worldName = aliasOrWorld; // Fallback: direkter Weltname
+            worldName = aliasOrWorld;
         }
 
         // Für Anzeige den Alias nehmen, falls vorhanden
@@ -56,43 +55,37 @@ public class JnrDeleteCommand implements CommandExecutor {
             player.teleport(mainWorld.getSpawnLocation());
         }
 
-        // Welt entladen & löschen
-        World world = Bukkit.getWorld(worldName);
-        if (world != null) {
-            Bukkit.unloadWorld(world, false);
-            WorldRepository.removeWorld(worldName);
+        try {
+            MultiverseCoreApi mvApi = MultiverseCoreApi.get();
+            WorldManager wm = mvApi.getWorldManager();
 
-            // auch in Multiverse-Core deregistrieren
-            try {
-                MultiverseCoreApi mvApi = MultiverseCoreApi.get();
-                WorldManager wm = mvApi.getWorldManager();
-                wm.removeWorld(worldName);
-            } catch (Exception ignored) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DB] Konnte Welt " + worldName + " nicht aus MV-Core deregistrieren.");
+            var optMvWorld = wm.getWorld(worldName);
+            if (optMvWorld.isEmpty()) {
+                player.sendMessage(ChatColor.RED + "Die Welt §e" + displayName + ChatColor.RED + " ist Multiverse nicht bekannt.");
+                return true;
             }
+            MultiverseWorld mvWorld = optMvWorld.get();
 
-            // Ordner löschen
-            File worldFolder = new File(Bukkit.getWorldContainer(), worldName);
-            try {
-                deleteDirectory(worldFolder);
+            DeleteWorldOptions options = DeleteWorldOptions.world(mvWorld)
+                    .keepFiles(Collections.emptyList());
+
+            Attempt<String, DeleteFailureReason> attempt = wm.deleteWorld(options);
+
+            if (attempt.isSuccess()) {
+                WorldRepository.removeWorld(worldName);
                 player.sendMessage(ChatColor.GREEN + "JumpAndRun §e" + displayName + ChatColor.GREEN + " wurde vollständig gelöscht.");
-                Bukkit.getConsoleSender().sendMessage("[JNR] Welt " + worldName + " (Alias=" + displayName + ") und Dateien gelöscht.");
-            } catch (IOException e) {
-                player.sendMessage(ChatColor.RED + "Welt entladen, aber Dateien konnten nicht gelöscht werden.");
-                e.printStackTrace();
+                Bukkit.getConsoleSender().sendMessage("[JNR] Welt " + worldName + " (Alias=" + displayName + ") erfolgreich entfernt (inkl. Dateien).");
+            } else {
+                DeleteFailureReason reason = attempt.getFailureReason();
+                String msg = attempt.getFailureMessage().formatted();
+                player.sendMessage(ChatColor.RED + "Fehler beim Löschen (" + reason + "): " + msg);
             }
-        } else {
-            player.sendMessage(ChatColor.RED + "Die Welt §e" + displayName + ChatColor.RED + " existiert nicht.");
+
+        } catch (Exception e) {
+            player.sendMessage(ChatColor.RED + "Fehler beim Löschen der Welt mit Multiverse-Core.");
+            e.printStackTrace();
         }
 
         return true;
-    }
-
-    private void deleteDirectory(File dir) throws IOException {
-        if (!dir.exists()) return;
-        Files.walk(dir.toPath())
-                .map(java.nio.file.Path::toFile)
-                .sorted((a, b) -> -a.compareTo(b)) // erst Dateien, dann Ordner
-                .forEach(File::delete);
     }
 }

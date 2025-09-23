@@ -13,7 +13,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
- * Subcommand: /jnr teleport <alias>
+ * Subcommand: /jnr teleport <alias|welt>
  */
 public class JnrTeleportCommand implements CommandExecutor {
 
@@ -25,25 +25,19 @@ public class JnrTeleportCommand implements CommandExecutor {
         }
         Player player = (Player) sender;
 
-        // Permission-Check
         if (!player.hasPermission("jumpandrun.teleport")) {
             player.sendMessage(ChatColor.RED + "Du hast keine Berechtigung für /jnr teleport.");
-            if (JumpAndRun.getConfigManager().isDebug()) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler "
-                        + player.getName() + " hat versucht /jnr teleport ohne Berechtigung auszuführen.");
-            }
             return true;
         }
 
-        // Argument prüfen
         if (args.length < 2) {
-            player.sendMessage(ChatColor.RED + "Usage: /jnr teleport <alias>");
+            player.sendMessage(ChatColor.RED + "Usage: /jnr teleport <alias|welt>");
             return true;
         }
 
         String aliasOrWorld = args[1];
 
-        // Alias → WorldName auflösen
+        // Alias → Weltname auflösen
         String worldName = WorldRepository.getWorldByAlias(aliasOrWorld);
         if (worldName == null) {
             worldName = aliasOrWorld; // Fallback: direkter Weltname
@@ -55,13 +49,11 @@ public class JnrTeleportCommand implements CommandExecutor {
             return true;
         }
 
-        // Published-Check
         if (!WorldRepository.isPublished(worldName) && !JumpAndRun.getConfigManager().isDebug()) {
             player.sendMessage(ChatColor.RED + "Dieses JumpAndRun ist noch im Draft-Modus.");
             return true;
         }
 
-        // Lock-Check
         if (!WorldLockManager.tryEnter(worldName, player)) {
             Player occ = WorldLockManager.getOccupant(worldName);
             String occName = (occ != null ? occ.getName() : "jemand anderes");
@@ -69,11 +61,9 @@ public class JnrTeleportCommand implements CommandExecutor {
             return true;
         }
 
-        // Start-Location aus DB
         Location spawn = WorldRepository.getStartLocation(worldName);
         if (spawn == null) {
             player.sendMessage(ChatColor.RED + "Keine Startposition für diese Welt gefunden.");
-            // Lock sofort wieder freigeben
             WorldLockManager.leave(worldName, player);
             return true;
         }
@@ -82,14 +72,8 @@ public class JnrTeleportCommand implements CommandExecutor {
         String alias = WorldRepository.getAlias(worldName);
         String displayName = (alias != null && !alias.isEmpty()) ? alias : worldName;
 
-        // Teleport
         player.teleport(spawn.clone().add(0, JumpAndRun.height + 1, 0));
         player.sendMessage(ChatColor.GREEN + "Du wurdest zur JumpAndRun-Insel §e" + displayName + " §a teleportiert!");
-
-        if (JumpAndRun.getConfigManager().isDebug()) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler "
-                    + player.getName() + " wurde in Welt " + worldName + " teleportiert (Alias=" + displayName + ").");
-        }
 
         return true;
     }
