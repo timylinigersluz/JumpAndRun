@@ -16,7 +16,7 @@ import java.util.List;
 public class JnrTabCompleter implements TabCompleter {
 
     private static final List<String> SUBCOMMANDS = Arrays.asList(
-            "create", "delete", "teleport", "list", "ready", "continue", "abort", "name"
+            "create", "delete", "teleport", "list", "ready", "continue", "abort", "name", "unpublish"
     );
 
     @Override
@@ -42,14 +42,29 @@ public class JnrTabCompleter implements TabCompleter {
                     break;
 
                 case "teleport":
-                case "delete":
                     try {
-                        for (String world : WorldRepository.getPublishedWorlds()) {
+                        // Staff: immer ALLE Welten (Draft + Published)
+                        for (String world : WorldRepository.getAllWorlds()) {
                             String aliasName = WorldRepository.getAlias(world);
                             if (aliasName != null && !aliasName.isEmpty()) {
                                 suggestions.add(aliasName); // Alias bevorzugen
                             } else {
                                 suggestions.add(world); // Fallback: interner Name
+                            }
+                        }
+                    } catch (Exception e) {
+                        suggestions.add("<keine Welten>");
+                    }
+                    break;
+
+                case "delete":
+                    try {
+                        for (String world : WorldRepository.getPublishedWorlds()) {
+                            String aliasName = WorldRepository.getAlias(world);
+                            if (aliasName != null && !aliasName.isEmpty()) {
+                                suggestions.add(aliasName);
+                            } else {
+                                suggestions.add(world);
                             }
                         }
                     } catch (Exception e) {
@@ -67,6 +82,21 @@ public class JnrTabCompleter implements TabCompleter {
 
                 case "abort":
                     suggestions.addAll(Arrays.asList("keepworld", "deleteworld"));
+                    break;
+
+                case "unpublish":
+                    try {
+                        for (String world : WorldRepository.getPublishedWorlds()) {
+                            String aliasName = WorldRepository.getAlias(world);
+                            if (aliasName != null && !aliasName.isEmpty()) {
+                                suggestions.add(aliasName);
+                            } else {
+                                suggestions.add(world);
+                            }
+                        }
+                    } catch (Exception e) {
+                        suggestions.add("<keine veröffentlichten Welten>");
+                    }
                     break;
             }
         }

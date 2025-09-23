@@ -7,62 +7,69 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 /**
- * Einfache Stoppuhr, die im Actionbar jedes Spielers die verstrichene Zeit anzeigt.
+ * Stoppuhr für einen bestimmten Spieler.
+ * Zeigt die verstrichene Zeit im Actionbar nur für diesen Spieler an.
  */
 public class StopWatch {
 
-    /** Anzahl verstrichener Sekunden seit dem letzten Start. */
+    private final Player player;
     private int secondsPassed = 0;
-
-    /** Kennzeichnet, ob die Stoppuhr aktuell läuft. */
     private boolean running = false;
-
-    /** Referenz auf die geplante Bukkit-Aufgabe zur periodischen Aktualisierung. */
     private BukkitRunnable timerTask;
 
-    /** Prüft, ob Debugmodus aktiv ist. */
+    public StopWatch(Player player) {
+        this.player = player;
+    }
+
     private boolean isDebug() {
         return JumpAndRun.getConfigManager().isDebug();
     }
 
     /**
-     * Startet die Stoppuhr und zeigt die Zeit allen Spielern im Actionbar an.
+     * Startet die Stoppuhr für den Spieler.
      */
-    public void startStopwatch() {
+    public void start() {
         if (running) {
             if (isDebug()) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch wurde bereits gestartet.");
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch für "
+                        + player.getName() + " läuft bereits.");
             }
             return;
         }
 
-        resetStopwatch(); // Reset der Zeit vor dem Start
+        reset();
         running = true;
 
         timerTask = new BukkitRunnable() {
             @Override
             public void run() {
+                if (!player.isOnline()) {
+                    stop();
+                    cancel();
+                    return;
+                }
                 secondsPassed++;
-                updateTimer();
+                updateActionBar();
             }
         };
 
-        timerTask.runTaskTimer(JumpAndRun.getPlugin(), 20, 20); // Update jede Sekunde (20 Ticks)
+        timerTask.runTaskTimer(JumpAndRun.getPlugin(), 20, 20); // jede Sekunde
 
         if (isDebug()) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch gestartet.");
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch für "
+                    + player.getName() + " gestartet.");
         }
     }
 
     /**
-     * Stoppt die Stoppuhr und liefert die verstrichene Zeit zurück.
-     *
-     * @return Anzahl Sekunden seit Start oder 0, falls nicht gelaufen.
+     * Stoppt die Stoppuhr.
+     * @return verstrichene Sekunden
      */
-    public int stopStopwatch() {
+    public int stop() {
         if (!running) {
             if (isDebug()) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch war nicht aktiv.");
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch für "
+                        + player.getName() + " war nicht aktiv.");
             }
             return 0;
         }
@@ -73,44 +80,30 @@ public class StopWatch {
         }
 
         if (isDebug()) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch gestoppt. Zeit=" + formatTime(secondsPassed));
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch für "
+                    + player.getName() + " gestoppt bei " + formatTime(secondsPassed));
         }
 
         return secondsPassed;
     }
 
     /**
-     * Setzt die interne Zeit zurück und aktualisiert die Anzeige.
+     * Setzt die interne Zeit zurück.
      */
-    public void resetStopwatch() {
+    public void reset() {
         secondsPassed = 0;
-        updateTimer();
-
-        if (isDebug()) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch zurückgesetzt.");
-        }
+        updateActionBar();
     }
 
-    /**
-     * Sendet die aktuelle Zeit an alle Spieler (Actionbar).
-     */
-    private void updateTimer() {
-        String display = ChatColor.YELLOW + "Time Passed: " + formatTime(secondsPassed);
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.sendActionBar(display);
-        }
+    private void updateActionBar() {
+        String display = ChatColor.YELLOW + "⏱ Zeit: " + formatTime(secondsPassed);
+        player.sendActionBar(display);
     }
 
-    /**
-     * @return Gibt zurück, ob die StopWatch aktuell läuft.
-     */
     public boolean isRunning() {
         return running;
     }
 
-    /**
-     * Formatiert Sekunden in ein HH:MM:SS-Format.
-     */
     private String formatTime(int seconds) {
         int hours = seconds / 3600;
         int minutes = (seconds % 3600) / 60;

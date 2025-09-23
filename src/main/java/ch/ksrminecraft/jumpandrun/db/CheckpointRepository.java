@@ -45,17 +45,27 @@ public class CheckpointRepository {
             return;
         }
 
-        String sql = "INSERT INTO Checkpoints (jnrId, idx, x, y, z) VALUES (?,?,?,?,?) " +
-                "ON DUPLICATE KEY UPDATE x=?, y=?, z=?";
+        String sql;
+        if (DatabaseConnection.isMySQL()) {
+            sql = "INSERT INTO Checkpoints (jnrId, idx, x, y, z) VALUES (?,?,?,?,?) " +
+                    "ON DUPLICATE KEY UPDATE x=?, y=?, z=?";
+        } else {
+            sql = "INSERT OR REPLACE INTO Checkpoints (jnrId, idx, x, y, z) VALUES (?,?,?,?,?)";
+        }
+
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
             ps.setInt(1, jnrId);
             ps.setInt(2, idx);
             ps.setInt(3, loc.getBlockX());
             ps.setInt(4, loc.getBlockY());
             ps.setInt(5, loc.getBlockZ());
-            ps.setInt(6, loc.getBlockX());
-            ps.setInt(7, loc.getBlockY());
-            ps.setInt(8, loc.getBlockZ());
+
+            if (DatabaseConnection.isMySQL()) {
+                ps.setInt(6, loc.getBlockX());
+                ps.setInt(7, loc.getBlockY());
+                ps.setInt(8, loc.getBlockZ());
+            }
+
             ps.executeUpdate();
             log("Checkpoint #" + idx + " in Welt " + worldName +
                     " gespeichert bei (" + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ() + ")");

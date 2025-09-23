@@ -38,11 +38,12 @@ public class JnrListCommand implements CommandExecutor {
         for (String worldName : worlds) {
             boolean published = WorldRepository.isPublished(worldName);
 
-            // Drafts ausblenden, wenn Spieler nicht berechtigt
+            // Drafts ausblenden
             if (!published && !showDrafts) {
                 continue;
             }
 
+            // Bestzeit und Leader aus DB holen
             Long bestTime = TimeRepository.getBestTime(worldName);
             String leaderUUID = TimeRepository.getLeader(worldName);
 
@@ -62,7 +63,9 @@ public class JnrListCommand implements CommandExecutor {
             }
 
             // Zeit formatieren
-            String timeStr = (bestTime != null) ? TimeRepository.formatTime(bestTime) : "—";
+            String timeStr = (bestTime != null && bestTime > 0)
+                    ? TimeRepository.formatTime(bestTime)
+                    : "—";
 
             // Alias oder Weltname anzeigen
             String alias = WorldRepository.getAlias(worldName);
@@ -70,6 +73,15 @@ public class JnrListCommand implements CommandExecutor {
 
             // Status farbig
             String status = published ? ChatColor.GREEN + " [LIVE]" : ChatColor.YELLOW + " [DRAFT]";
+
+            // Konsolendebug (optional)
+            if (JumpAndRun.getConfigManager().isDebug()) {
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] /jnr list → "
+                        + "World=" + worldName
+                        + " | Published=" + published
+                        + " | Leader=" + leaderName
+                        + " | Best=" + timeStr);
+            }
 
             sender.sendMessage(ChatColor.AQUA + displayName + status +
                     ChatColor.GRAY + " | Leader: " + ChatColor.WHITE + leaderName +

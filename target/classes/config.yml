@@ -1,17 +1,20 @@
-schematicPath: "JumpAndRunIsland.schem"
+# JumpAndRun - Konfigurationen
 
+# Debug-Modus ein- oder ausschalten
 debug: true
 
-# JumpAndRun-DB
-mysql:
+# JumpAndRun-DB (MySQL)
+jumpandrun:
+  enabled: false
   host: localhost
   port: 3306
   database: jnr
   user: root
   password: geheim
 
-# Punkte-DB für RankPointsAPI
+# Punkte-DB für RankPointsAPI (MySQL)
 pointsdb:
+  enabled: false
   host: localhost
   port: 3306
   database: rankpoints
@@ -19,10 +22,18 @@ pointsdb:
   password: anderespasswort
   excludeStaff: true
 
+# Den Typ der Druckplatten festlegen
 plates:
   start: HEAVY_WEIGHTED_PRESSURE_PLATE
   end: LIGHT_WEIGHTED_PRESSURE_PLATE
   checkpoint: STONE_PRESSURE_PLATE
 
+# Punkte für das Erreichen eines neuen Rekords, falls die Punkte-DB aktiv ist
 points:
   new-record: 10
+
+# Fallback-Welt (z. B. Lobby)
+fallback-world: world
+
+# Spieler (nicht verändern)
+players: {}

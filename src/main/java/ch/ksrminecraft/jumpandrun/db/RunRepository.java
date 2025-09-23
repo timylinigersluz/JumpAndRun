@@ -22,14 +22,25 @@ public class RunRepository {
             return;
         }
 
-        String sql = "INSERT INTO ActiveRuns (jnrId, playerUUID, startTime) VALUES (?,?,?) " +
-                "ON DUPLICATE KEY UPDATE startTime=?";
+        long now = System.currentTimeMillis();
+        String sql;
+
+        if (DatabaseConnection.isMySQL()) {
+            sql = "INSERT INTO ActiveRuns (jnrId, playerUUID, startTime) VALUES (?,?,?) " +
+                    "ON DUPLICATE KEY UPDATE startTime=?";
+        } else {
+            sql = "INSERT OR REPLACE INTO ActiveRuns (jnrId, playerUUID, startTime) VALUES (?,?,?)";
+        }
+
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
-            long now = System.currentTimeMillis();
             ps.setInt(1, jnrId);
             ps.setString(2, player.getUniqueId().toString());
             ps.setLong(3, now);
-            ps.setLong(4, now);
+
+            if (DatabaseConnection.isMySQL()) {
+                ps.setLong(4, now);
+            }
+
             ps.executeUpdate();
             log("Startzeit für " + player.getName() + " in Welt " + world.getName() + " gespeichert.");
         } catch (SQLException e) {

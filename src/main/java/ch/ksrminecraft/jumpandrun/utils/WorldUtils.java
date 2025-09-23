@@ -1,9 +1,6 @@
 package ch.ksrminecraft.jumpandrun.utils;
 
-import org.bukkit.Bukkit;
-import org.bukkit.World;
-import org.bukkit.WorldCreator;
-import org.bukkit.WorldType;
+import org.bukkit.*;
 import org.bukkit.World.Environment;
 import org.mvplugins.multiverse.core.MultiverseCoreApi;
 import org.mvplugins.multiverse.core.world.WorldManager;
@@ -76,5 +73,36 @@ public final class WorldUtils {
                     .type(type)
                     .generateStructures(false));
         }
+    }
+
+    public static void configureWorld(World world) {
+        if (world == null) return;
+
+        // Zeit & Wetter fixieren
+        world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
+        world.setTime(6000);
+        world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
+        world.setStorm(false);
+        world.setThundering(false);
+
+        // Keine Monster & PvE deaktiviert
+        world.setSpawnFlags(false, false);
+        world.setDifficulty(Difficulty.PEACEFUL);
+        world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
+        world.setGameRule(GameRule.MOB_GRIEFING, false);
+
+        // Spielerfreundlich
+        world.setGameRule(GameRule.KEEP_INVENTORY, true);
+        world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, true);
+        world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, false);
+
+        // Performance & Cleanups
+        world.setGameRule(GameRule.DO_FIRE_TICK, false);
+        world.setGameRule(GameRule.DO_TRADER_SPAWNING, false);
+        world.setGameRule(GameRule.DISABLE_RAIDS, true);
+
+        // Debug-Ausgabe
+        Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Welt " + world.getName()
+                + " wurde konfiguriert: fixer Tag, kein Wetter, keine Mobs, PvE aus, Spielerfreundliche Regeln aktiv.");
     }
 }

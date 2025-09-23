@@ -72,8 +72,16 @@ public class JnrTeleportCommand implements CommandExecutor {
         String alias = WorldRepository.getAlias(worldName);
         String displayName = (alias != null && !alias.isEmpty()) ? alias : worldName;
 
-        player.teleport(spawn.clone().add(0, JumpAndRun.height + 1, 0));
+        // Teleportposition
+        Location tpLoc = spawn.clone().add(0, JumpAndRun.height + 1, 0);
+
+        // Blickrichtung fix auf Osten setzen
+        tpLoc.setYaw(-90f);
+
+        player.teleport(tpLoc);
         player.sendMessage(ChatColor.GREEN + "Du wurdest zur JumpAndRun-Insel §e" + displayName + " §a teleportiert!");
+
+        Voraussetzungen:
 
         return true;
     }

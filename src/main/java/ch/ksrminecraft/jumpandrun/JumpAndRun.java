@@ -9,6 +9,7 @@ import ch.ksrminecraft.jumpandrun.utils.PointsService;
 import ch.ksrminecraft.jumpandrun.utils.WorldSyncManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -90,6 +91,11 @@ public final class JumpAndRun extends JavaPlugin {
         pm.registerEvents(new TestRunAbortListener(), this);
         pm.registerEvents(new CheckpointRespawnListener(), this);
         pm.registerEvents(new WorldLockListener(), this);
+        pm.registerEvents(new CheckpointCleanupListener(), this);
+        pm.registerEvents(new SignListener(), this);
+        pm.registerEvents(new WorldSwitchListener(), this);
+        pm.registerEvents(new DeathListener(), this);
+        pm.registerEvents(new LeaveItemListener(), this);
 
         // AliasPrompt aktivieren
         ch.ksrminecraft.jumpandrun.utils.AliasPromptManager.init();
@@ -98,26 +104,37 @@ public final class JumpAndRun extends JavaPlugin {
         if (getCommand("jnr") != null) {
             getCommand("jnr").setExecutor((sender, cmd, label, args) -> {
                 if (args.length == 0) {
-                    sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort|name>");
+                    sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort|name|unpublish>");
                     return true;
                 }
                 switch (args[0].toLowerCase()) {
-                    case "create":   return new JnrCreateCommand(this).onCommand(sender, cmd, label, args);
-                    case "delete":   return new JnrDeleteCommand().onCommand(sender, cmd, label, args);
-                    case "teleport": return new JnrTeleportCommand().onCommand(sender, cmd, label, args);
-                    case "list":     return new JnrListCommand().onCommand(sender, cmd, label, args);
-                    case "ready":    return new JnrReadyCommand().onCommand(sender, cmd, label, args);
-                    case "continue": return new JnrContinueCommand().onCommand(sender, cmd, label, args);
-                    case "abort":    return new JnrAbortCommand().onCommand(sender, cmd, label, args);
-                    case "name":     return new JnrNameCommand().onCommand(sender, cmd, label, args);
+                    case "create":    return new JnrCreateCommand(this).onCommand(sender, cmd, label, args);
+                    case "delete":    return new JnrDeleteCommand().onCommand(sender, cmd, label, args);
+                    case "teleport":  return new JnrTeleportCommand().onCommand(sender, cmd, label, args);
+                    case "list":      return new JnrListCommand().onCommand(sender, cmd, label, args);
+                    case "ready":     return new JnrReadyCommand().onCommand(sender, cmd, label, args);
+                    case "continue":  return new JnrContinueCommand().onCommand(sender, cmd, label, args);
+                    case "abort":     return new JnrAbortCommand().onCommand(sender, cmd, label, args);
+                    case "name":      return new JnrNameCommand().onCommand(sender, cmd, label, args);
+                    case "unpublish": return new JnrUnpublishCommand().onCommand(sender, cmd, label, args);
                     default:
-                        sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort|name>");
+                        sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort|name|unpublish>");
                         return true;
                 }
             });
             getCommand("jnr").setTabCompleter(new JnrTabCompleter());
         } else {
             getLogger().severe("Befehl /jnr konnte nicht registriert werden (plugin.yml prüfen!)");
+        }
+
+        // === Leader-Schilder beim Serverstart aktualisieren ===
+        try {
+            for (String worldName : ch.ksrminecraft.jumpandrun.db.WorldRepository.getPublishedWorlds()) {
+                ch.ksrminecraft.jumpandrun.utils.SignUpdater.updateLeaderSigns(worldName);
+            }
+            getLogger().info("[JNR] Alle Leader-Schilder beim Start aktualisiert.");
+        } catch (Exception e) {
+            getLogger().warning("[JNR] Fehler beim Aktualisieren der Leader-Schilder beim Start: " + e.getMessage());
         }
 
         getLogger().info("JumpAndRun Plugin erfolgreich aktiviert.");

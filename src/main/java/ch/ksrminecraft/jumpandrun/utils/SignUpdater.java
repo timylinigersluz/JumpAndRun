@@ -24,14 +24,29 @@ public class SignUpdater {
 
     /**
      * Registriert ein neues Leader-Schild im Speicher.
+     * Verhindert doppelte Einträge und führt sofort ein Update durch.
      */
     public static void registerLeaderSign(String worldName, Location loc) {
-        leaderSigns.computeIfAbsent(worldName, k -> new ArrayList<>()).add(loc);
+        leaderSigns.computeIfAbsent(worldName, k -> new ArrayList<>());
+
+        // doppelte Registrierung verhindern
+        if (leaderSigns.get(worldName).stream().anyMatch(l -> l.equals(loc))) {
+            if (JumpAndRun.getConfigManager().isDebug()) {
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Leader-Schild für " + worldName +
+                        " bei " + formatLoc(loc) + " war bereits registriert.");
+            }
+            return;
+        }
+
+        leaderSigns.get(worldName).add(loc);
 
         if (JumpAndRun.getConfigManager().isDebug()) {
             Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Leader-Schild für " + worldName +
                     " bei " + formatLoc(loc) + " registriert.");
         }
+
+        // sofortiges Update für dieses Schild
+        updateLeaderSigns(worldName);
     }
 
     /**
@@ -39,7 +54,13 @@ public class SignUpdater {
      */
     public static void updateLeaderSigns(String worldName) {
         List<Location> signs = leaderSigns.get(worldName);
-        if (signs == null || signs.isEmpty()) return;
+
+        if (signs == null || signs.isEmpty()) {
+            if (JumpAndRun.getConfigManager().isDebug()) {
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Keine Leader-Schilder für " + worldName + " registriert.");
+            }
+            return;
+        }
 
         Long bestTime = TimeRepository.getBestTime(worldName);
         String leader = TimeRepository.getLeader(worldName);
@@ -53,20 +74,22 @@ public class SignUpdater {
         }
         String timeStr = (bestTime != null) ? TimeUtils.formatMs(bestTime) : "—";
 
-        // Alias nutzen, falls vorhanden
         String alias = WorldRepository.getAlias(worldName);
         String displayName = (alias != null && !alias.isEmpty()) ? alias : worldName;
 
         for (Location loc : signs) {
-            if (loc.getWorld() == null) continue; // Welt nicht geladen
+            if (loc.getWorld() == null) continue;
             Block block = loc.getBlock();
             if (!(block.getState() instanceof Sign)) continue;
 
             Sign sign = (Sign) block.getState();
-            sign.setLine(0, ChatColor.DARK_BLUE + "[JNR-LEADER]");
-            sign.setLine(1, ChatColor.AQUA + displayName);
-            sign.setLine(2, ChatColor.YELLOW + leaderName);
+
+            // Farbiges Layout
+            sign.setLine(0, ChatColor.DARK_BLUE.toString() + ChatColor.BOLD + "[JNR-LEADER]");
+            sign.setLine(1, ChatColor.AQUA.toString() + displayName);
+            sign.setLine(2, ChatColor.GOLD.toString() + leaderName);
             sign.setLine(3, ChatColor.GRAY + timeStr);
+
             sign.update();
         }
 
@@ -80,5 +103,23 @@ public class SignUpdater {
         return String.format("(%s|%.1f,%.1f,%.1f)",
                 loc.getWorld() != null ? loc.getWorld().getName() : "null",
                 loc.getX(), loc.getY(), loc.getZ());
+    }
+
+    /**
+     * Entfernt ein Leader-Schild aus dem Speicher.
+     */
+    public static void unregisterLeaderSign(String worldName, Location loc) {
+        List<Location> signs = leaderSigns.get(worldName);
+        if (signs != null) {
+            signs.removeIf(l -> l.equals(loc));
+            if (signs.isEmpty()) {
+                leaderSigns.remove(worldName);
+            }
+        }
+
+        if (JumpAndRun.getConfigManager().isDebug()) {
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Leader-Schild für " + worldName +
+                    " bei " + formatLoc(loc) + " entfernt.");
+        }
     }
 }

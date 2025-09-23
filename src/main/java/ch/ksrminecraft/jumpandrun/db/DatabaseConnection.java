@@ -1,19 +1,23 @@
 package ch.ksrminecraft.jumpandrun.db;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
+import ch.ksrminecraft.jumpandrun.utils.ConfigManager;
 import org.bukkit.Bukkit;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.io.File;
+import java.sql.*;
 
 /**
- * Verwaltet die Verbindung zur MySQL-Datenbank und initialisiert Basis-Tabellen.
+ * Verwaltet die Verbindung zur Datenbank (MySQL oder SQLite) und initialisiert Basis-Tabellen.
  */
 public class DatabaseConnection {
 
     private static Connection connection;
+    private static boolean mysql = true;
+
+    public static boolean isMySQL() {
+        return mysql;
+    }
 
     /**
      * Liefert eine offene DB-Verbindung zurück.
@@ -21,96 +25,84 @@ public class DatabaseConnection {
     public static Connection getConnection() {
         if (connection != null) return connection;
 
-        String host = JumpAndRun.getPlugin().getConfig().getString("mysql.host");
-        int port = JumpAndRun.getPlugin().getConfig().getInt("mysql.port");
-        String database = JumpAndRun.getPlugin().getConfig().getString("mysql.database");
-        String user = JumpAndRun.getPlugin().getConfig().getString("mysql.user");
-        String password = JumpAndRun.getPlugin().getConfig().getString("mysql.password");
-
-        // JDBC-URL zusammensetzen
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&autoReconnect=true";
-
-        log("[DEBUG] Versuche Verbindung aufzubauen...");
-        log("[DEBUG] Host=" + host + " Port=" + port + " DB=" + database + " User=" + user);
+        ConfigManager cfg = JumpAndRun.getConfigManager();
 
         try {
-            connection = DriverManager.getConnection(url, user, password);
-            log("Verbindung zur JnR-Datenbank erfolgreich hergestellt.");
-            return connection;
-        } catch (SQLException e) {
-            log("[ERROR] Verbindung fehlgeschlagen!");
-            log("[ERROR] SQLState=" + e.getSQLState() + " ErrorCode=" + e.getErrorCode() + " Message=" + e.getMessage());
+            if (cfg.isJnrDbEnabled()) {
+                // === MySQL ===
+                mysql = true;
+                String host = cfg.getJnrHost();
+                int port = cfg.getJnrPort();
+                String database = cfg.getJnrDatabase();
+                String user = cfg.getJnrUser();
+                String password = cfg.getJnrPassword();
 
-            try {
-                // Datenbank automatisch anlegen, falls nicht vorhanden
-                String baseUrl = "jdbc:mysql://" + host + ":" + port + "/?useSSL=false&autoReconnect=true";
-                connection = DriverManager.getConnection(baseUrl, user, password);
+                String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&autoReconnect=true";
 
-                log("[DEBUG] Mit Server verbunden, versuche Datenbank '" + database + "' anzulegen...");
-                String sql = "CREATE DATABASE IF NOT EXISTS " + database;
-                Statement stmt = connection.createStatement();
-                stmt.execute(sql);
-                stmt.close();
-                connection.close();
-
+                log("[DEBUG] MySQL-Verbindung aufbauen: " + url + " User=" + user);
                 connection = DriverManager.getConnection(url, user, password);
-                log("Datenbank '" + database + "' neu erstellt und verbunden.");
-                return connection;
-            } catch (SQLException ex) {
-                log("[FATAL] Verbindung endgültig fehlgeschlagen!");
-                log("[FATAL] SQLState=" + ex.getSQLState() + " ErrorCode=" + ex.getErrorCode() + " Message=" + ex.getMessage());
-                throw new RuntimeException("Konnte keine Verbindung zur Datenbank herstellen", ex);
+                log("MySQL-Verbindung erfolgreich hergestellt.");
+            } else {
+                // === SQLite ===
+                mysql = false;
+                File dbFile = new File(JumpAndRun.getPlugin().getDataFolder(), "jumpandrun.db");
+                dbFile.getParentFile().mkdirs();
+
+                String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
+                log("[DEBUG] SQLite-Verbindung aufbauen: " + url);
+
+                connection = DriverManager.getConnection(url);
+                log("SQLite-Verbindung erfolgreich hergestellt.");
             }
+        } catch (SQLException e) {
+            throw new RuntimeException("Konnte keine Verbindung zur Datenbank herstellen", e);
         }
+
+        return connection;
     }
 
     /**
-     * Erstellt die zentrale JumpAndRuns-Tabelle.
+     * Erstellt die zentralen Tabellen für JumpAndRun.
      */
     public static void initializeWorldTables() {
         try (Statement stmt = getConnection().createStatement()) {
+
             // JumpAndRuns
             stmt.execute("CREATE TABLE IF NOT EXISTS JumpAndRuns (" +
-                    "id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY," +
-                    "worldName VARCHAR(100) NOT NULL," +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT," + // AUTOINCREMENT = MySQL ignoriert Zusatz
+                    "worldName VARCHAR(100) NOT NULL UNIQUE," +
                     "alias VARCHAR(100) DEFAULT ''," +
-                    "creator CHAR(36) NOT NULL," +
+                    "creator CHAR(36)," +
                     "published BOOLEAN DEFAULT false," +
                     "ready BOOLEAN DEFAULT false," +
                     "startLocationX INT, startLocationY INT, startLocationZ INT," +
                     "yLimit INT," +
-                    "currentPlayer CHAR(36)," +
-                    "UNIQUE KEY unique_world (worldName)" +
-                    ") ENGINE=InnoDB");
+                    "currentPlayer CHAR(36))");
 
             // Laufzeiten
             stmt.execute("CREATE TABLE IF NOT EXISTS JumpAndRunTimes (" +
-                    "id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY," +
-                    "jnrId INT UNSIGNED NOT NULL," +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "jnrId INT NOT NULL," +
                     "playerUUID CHAR(36) NOT NULL," +
                     "time BIGINT NOT NULL," +
                     "created TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
-                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE," +
-                    "INDEX idx_jnr_times (jnrId, time)" +
-                    ") ENGINE=InnoDB");
+                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE)");
 
             // Checkpoints
             stmt.execute("CREATE TABLE IF NOT EXISTS Checkpoints (" +
-                    "jnrId INT UNSIGNED NOT NULL," +
+                    "jnrId INT NOT NULL," +
                     "idx INT NOT NULL," +
                     "x INT, y INT, z INT," +
                     "PRIMARY KEY (jnrId, idx)," +
-                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE" +
-                    ") ENGINE=InnoDB");
+                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE)");
 
-            // Aktive Runs (neu!)
+            // Aktive Runs
             stmt.execute("CREATE TABLE IF NOT EXISTS ActiveRuns (" +
-                    "jnrId INT UNSIGNED NOT NULL," +
+                    "jnrId INT NOT NULL," +
                     "playerUUID CHAR(36) NOT NULL," +
                     "startTime BIGINT NOT NULL," +
                     "PRIMARY KEY (jnrId, playerUUID)," +
-                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE" +
-                    ") ENGINE=InnoDB");
+                    "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE)");
 
             log("Tabellen JumpAndRuns, JumpAndRunTimes, Checkpoints und ActiveRuns geprüft/erstellt.");
         } catch (SQLException e) {
@@ -118,9 +110,6 @@ public class DatabaseConnection {
         }
     }
 
-    /**
-     * Hilfsmethode fürs Logging.
-     */
     private static void log(String msg) {
         Bukkit.getConsoleSender().sendMessage("[JNR-DB] " + msg);
     }

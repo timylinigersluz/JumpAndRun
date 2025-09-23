@@ -59,6 +59,9 @@ public class JnrCreateCommand implements CommandExecutor {
             return true;
         }
 
+        // Welt konfigurieren (kein Tag/Nacht, keine Monster, kein PvE)
+        WorldUtils.configureWorld(world);
+
         // Inseln erstellen
         Location start = new Location(world, -(length / 2) - 10, 100, 0);
         IslandGenerator.createFloatingIslandStart(start, 10, JumpAndRun.height);

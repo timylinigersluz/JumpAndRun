@@ -22,15 +22,21 @@ public class TimeRepository {
             return;
         }
 
-        String sql = "INSERT INTO JumpAndRunTimes (jnrId, playerUUID, time) VALUES (?,?,?)";
+        String sql;
+        if (DatabaseConnection.isMySQL()) {
+            sql = "INSERT INTO JumpAndRunTimes (jnrId, playerUUID, time, created) VALUES (?,?,?,NOW())";
+        } else {
+            sql = "INSERT INTO JumpAndRunTimes (jnrId, playerUUID, time, created) VALUES (?,?,?,CURRENT_TIMESTAMP)";
+        }
+
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
             ps.setInt(1, jnrId);
             ps.setString(2, player.getUniqueId().toString());
             ps.setLong(3, time);
             ps.executeUpdate();
-            log("Zeit für " + player.getName() + " gespeichert (" + time + " ms).");
+            log("Zeit für Spieler " + player.getName() + " gespeichert (" + time + " ms, Welt=" + world.getName() + ").");
         } catch (SQLException e) {
-            log("Fehler beim Speichern der Zeit.");
+            log("Fehler beim Speichern der Zeit für Welt " + world.getName() + ", Spieler=" + player.getName());
             e.printStackTrace();
         }
     }

@@ -6,6 +6,7 @@ import ch.ksrminecraft.jumpandrun.listeners.WorldSwitchListener;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -68,7 +69,7 @@ public class AliasPromptManager implements Listener {
         // Spieler informieren
         player.sendMessage(ChatColor.GREEN + "✔ Dein JumpAndRun heißt jetzt: §e" + alias);
 
-        // Spieler zurück in die Ursprungswelt (Lobby) teleportieren
+        /// Spieler zurückteleportieren (Origin oder Fallback)
         Location origin = WorldSwitchListener.getOrigin(player);
         if (origin != null) {
             Bukkit.getScheduler().runTask(JumpAndRun.getPlugin(), () -> {
@@ -76,6 +77,18 @@ public class AliasPromptManager implements Listener {
                 WorldSwitchListener.clearOrigin(player);
                 player.sendMessage(ChatColor.GRAY + "Du wurdest zurück in die Lobby teleportiert.");
             });
+        } else {
+            String fallbackName = JumpAndRun.getConfigManager().getFallbackWorld();
+            World fallback = Bukkit.getWorld(fallbackName);
+            if (fallback != null) {
+                Bukkit.getScheduler().runTask(JumpAndRun.getPlugin(), () -> {
+                    player.teleport(fallback.getSpawnLocation());
+                    player.sendMessage(ChatColor.GRAY + "Du wurdest zur Fallback-Welt '" + fallbackName + "' teleportiert.");
+                });
+            } else {
+                player.sendMessage(ChatColor.RED + "Fehler: Weder eine gespeicherte Origin noch die Fallback-Welt '"
+                        + fallbackName + "' sind verfügbar.");
+            }
         }
 
         // Schild-Anleitungen

@@ -1,7 +1,6 @@
 package ch.ksrminecraft.jumpandrun.listeners;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
-import ch.ksrminecraft.jumpandrun.db.RunRepository;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.utils.PlayerUtils;
 import org.bukkit.Bukkit;
@@ -16,7 +15,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
  * Listener, der Spielerbewegungen überwacht und bei einem Sturz
  * unterhalb der hinterlegten Y-Grenze zurück zum letzten Checkpoint
  * (oder Startpunkt, falls keiner existiert) teleportiert.
- * Bricht außerdem den aktuellen Run ab und setzt Spielerwerte zurück.
+ * Setzt außerdem Spielerwerte zurück, aber stoppt NICHT den aktiven Run.
  */
 public class FallDownListener implements Listener {
 
@@ -64,19 +63,16 @@ public class FallDownListener implements Listener {
                 return;
             }
 
-            // Spieler zurücksetzen und teleportieren
+            // Spieler zurücksetzen (Effekte, Velocity etc.) und teleportieren
             PlayerUtils.resetState(player);
             player.teleport(teleportLocation);
-
-            // Run zurücksetzen
-            RunRepository.clearRun(world, player);
 
             if (JumpAndRun.getConfigManager().isDebug()) {
                 Bukkit.getConsoleSender().sendMessage(
                         "[JNR-DEBUG] Spieler " + player.getName() +
                                 " ist unter Y=" + yLimit +
                                 " gefallen → Teleport nach " + formatLocation(teleportLocation) +
-                                " & ActiveRun gelöscht."
+                                " (Run bleibt aktiv)."
                 );
             }
         }

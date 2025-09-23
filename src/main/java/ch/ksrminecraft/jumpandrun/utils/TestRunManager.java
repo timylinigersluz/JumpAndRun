@@ -5,19 +5,18 @@ import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Verwalten des Testmodus für JumpAndRun-Ersteller.
- * Hält fest, welche Spieler gerade ihre eigenen JnRs testen
- * und welche StopWatches dazu gehören.
+ * Nutzt den zentralen TimeManager für StopWatches.
  */
 public class TestRunManager {
-
-    /** Map<Spieler-UUID, StopWatch> für laufende Testruns */
-    private static final Map<UUID, StopWatch> activeTests = new HashMap<>();
 
     /** Spieler, die vorbereitet sind (Teleport + Adventure, aber Zeit läuft noch nicht) */
     private static final Set<UUID> preparedTests = new HashSet<>();
@@ -44,9 +43,9 @@ public class TestRunManager {
             return; // Spieler war nicht vorbereitet
         }
 
-        StopWatch stopWatch = new StopWatch();
-        stopWatch.startStopwatch();
-        activeTests.put(player.getUniqueId(), stopWatch);
+        // Startzeit + StopWatch über TimeManager setzen
+        World world = player.getWorld();
+        TimeManager.inputStartTime(world, player);
 
         player.setGameMode(GameMode.SURVIVAL);
         player.sendMessage("§aLos geht's! Deine Zeit läuft jetzt.");
@@ -59,29 +58,26 @@ public class TestRunManager {
     /** Beendet den Testmodus erfolgreich und setzt die Welt auf Published */
     public static void completeTest(Player player) {
         preparedTests.remove(player.getUniqueId());
-        StopWatch stopWatch = activeTests.remove(player.getUniqueId());
-        if (stopWatch != null) {
-            int seconds = stopWatch.stopStopwatch();
 
-            String worldName = player.getWorld().getName();
-            WorldRepository.setPublished(worldName, true);
+        // StopWatch zentral beenden
+        TimeManager.stopStopWatch(player);
 
-            player.setGameMode(GameMode.CREATIVE);
-            player.sendMessage("§aDein JumpAndRun wurde veröffentlicht! Zeit: " + seconds + "s");
+        String worldName = player.getWorld().getName();
+        WorldRepository.setPublished(worldName, true);
 
-            Bukkit.getConsoleSender().sendMessage("[JNR] Welt " +
-                    worldName + " wurde veröffentlicht durch " + player.getName() +
-                    " (Zeit=" + seconds + "s)");
-        }
+        player.setGameMode(GameMode.CREATIVE);
+        player.sendMessage("§aDein JumpAndRun wurde veröffentlicht!");
+
+        Bukkit.getConsoleSender().sendMessage("[JNR] Welt " +
+                worldName + " wurde veröffentlicht durch " + player.getName());
     }
 
     /** Bricht einen Test ab */
     public static void abortTest(Player player) {
         preparedTests.remove(player.getUniqueId());
-        StopWatch stopWatch = activeTests.remove(player.getUniqueId());
-        if (stopWatch != null) {
-            stopWatch.stopStopwatch();
-        }
+
+        // StopWatch zentral beenden
+        TimeManager.stopStopWatch(player);
 
         player.setGameMode(GameMode.CREATIVE);
 
@@ -100,12 +96,13 @@ public class TestRunManager {
         }
     }
 
-    /** Prüft, ob Spieler gerade testet (Zeit läuft) */
+    /** Prüft, ob Spieler gerade testet (d.h. Zeit läuft) */
     public static boolean isTesting(Player player) {
-        return activeTests.containsKey(player.getUniqueId());
+        return TimeManager.hasStopWatch(player);
     }
 
     private static boolean isDebug() {
         return JumpAndRun.getConfigManager().isDebug();
     }
+
 }
