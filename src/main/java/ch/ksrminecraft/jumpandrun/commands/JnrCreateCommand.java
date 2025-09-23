@@ -2,6 +2,7 @@ package ch.ksrminecraft.jumpandrun.commands;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
+import ch.ksrminecraft.jumpandrun.db.TimeRepository;
 import ch.ksrminecraft.jumpandrun.utils.IslandGenerator;
 import org.bukkit.*;
 import org.bukkit.command.Command;
@@ -74,9 +75,22 @@ public class JnrCreateCommand implements CommandExecutor {
         // Datenbank registrieren
         WorldRepository.registerWorld(start, JumpAndRun.height, player.getUniqueId().toString());
 
+        // ZEITENTABELLE INITIALISIEREN
+        try {
+            TimeRepository.initializeTimeTable(world);
+            Bukkit.getConsoleSender().sendMessage("[JNR-DB] Zeitentabelle für Welt " + worldId + " erstellt/geprüft.");
+        } catch (Exception e) {
+            Bukkit.getConsoleSender().sendMessage("[JNR-ERROR] Konnte Zeitentabelle für Welt " + worldId + " nicht initialisieren!");
+            e.printStackTrace();
+        }
 
         // Teleport Spieler
-        player.teleport(start.clone().add(0, JumpAndRun.height + 1, 0));
+        Location tpLoc = start.clone().add(0, JumpAndRun.height + 1, 0);
+
+        // Spieler soll Richtung Zielinsel schauen
+        tpLoc.setDirection(goal.toVector().subtract(tpLoc.toVector()));
+
+        player.teleport(tpLoc);
         player.setGameMode(GameMode.CREATIVE);
 
         player.sendMessage(ChatColor.GREEN + "JumpAndRun Welt " + worldId + " erstellt und Inseln generiert!");

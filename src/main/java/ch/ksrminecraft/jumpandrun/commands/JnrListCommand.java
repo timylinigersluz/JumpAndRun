@@ -15,7 +15,9 @@ import java.util.UUID;
 
 /**
  * Subcommand: /jnr list
- * Listet alle verfügbaren JumpAndRun-Welten mit Leader und Bestzeit.
+ * Listet JumpAndRun-Welten mit Leader und Bestzeit.
+ * Normale Spieler sehen nur veröffentlichte Welten,
+ * Spieler mit Permission "jumpandrun.drafts" oder im Debugmodus auch Drafts.
  */
 public class JnrListCommand implements CommandExecutor {
 
@@ -30,11 +32,14 @@ public class JnrListCommand implements CommandExecutor {
 
         sender.sendMessage(ChatColor.GOLD + "===== JumpAndRun-Welten =====");
 
+        boolean showDrafts = JumpAndRun.getConfigManager().isDebug()
+                || sender.hasPermission("jumpandrun.drafts");
+
         for (String worldName : worlds) {
             boolean published = WorldRepository.isPublished(worldName);
 
-            // Draft-Welten nur im Debug sichtbar
-            if (!published && !JumpAndRun.getConfigManager().isDebug()) {
+            // Drafts ausblenden, wenn Spieler nicht berechtigt
+            if (!published && !showDrafts) {
                 continue;
             }
 
@@ -59,7 +64,7 @@ public class JnrListCommand implements CommandExecutor {
             // Zeit formatieren
             String timeStr = (bestTime != null) ? TimeRepository.formatTime(bestTime) : "—";
 
-            // Status
+            // Status farbig
             String status = published ? ChatColor.GREEN + " [LIVE]" : ChatColor.YELLOW + " [DRAFT]";
 
             sender.sendMessage(ChatColor.AQUA + worldName + status +

@@ -21,32 +21,45 @@ public class DatabaseConnection {
     public static Connection getConnection() {
         if (connection != null) return connection;
 
-        String url = JumpAndRun.getPlugin().getConfig().getString("mysql.host");
+        String host = JumpAndRun.getPlugin().getConfig().getString("mysql.host");
+        int port = JumpAndRun.getPlugin().getConfig().getInt("mysql.port");
+        String database = JumpAndRun.getPlugin().getConfig().getString("mysql.database");
         String user = JumpAndRun.getPlugin().getConfig().getString("mysql.user");
         String password = JumpAndRun.getPlugin().getConfig().getString("mysql.password");
+
+        // JDBC-URL zusammensetzen
+        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&autoReconnect=true";
+
+        log("[DEBUG] Versuche Verbindung aufzubauen...");
+        log("[DEBUG] Host=" + host + " Port=" + port + " DB=" + database + " User=" + user);
 
         try {
             connection = DriverManager.getConnection(url, user, password);
             log("Verbindung zur JnR-Datenbank erfolgreich hergestellt.");
             return connection;
         } catch (SQLException e) {
+            log("[ERROR] Verbindung fehlgeschlagen!");
+            log("[ERROR] SQLState=" + e.getSQLState() + " ErrorCode=" + e.getErrorCode() + " Message=" + e.getMessage());
+
             try {
                 // Datenbank automatisch anlegen, falls nicht vorhanden
-                String baseUrl = url.substring(0, url.lastIndexOf('/'));
+                String baseUrl = "jdbc:mysql://" + host + ":" + port + "/?useSSL=false&autoReconnect=true";
                 connection = DriverManager.getConnection(baseUrl, user, password);
 
-                String dbName = url.substring(url.lastIndexOf('/') + 1).split("\\?")[0];
+                log("[DEBUG] Mit Server verbunden, versuche Datenbank '" + database + "' anzulegen...");
+                String sql = "CREATE DATABASE IF NOT EXISTS " + database;
                 Statement stmt = connection.createStatement();
-                stmt.execute("CREATE DATABASE IF NOT EXISTS " + dbName);
+                stmt.execute(sql);
                 stmt.close();
                 connection.close();
 
                 connection = DriverManager.getConnection(url, user, password);
-                log("Datenbank neu erstellt und verbunden.");
+                log("Datenbank '" + database + "' neu erstellt und verbunden.");
                 return connection;
             } catch (SQLException ex) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DB] Verbindung fehlgeschlagen!");
-                throw new RuntimeException(ex);
+                log("[FATAL] Verbindung endgültig fehlgeschlagen!");
+                log("[FATAL] SQLState=" + ex.getSQLState() + " ErrorCode=" + ex.getErrorCode() + " Message=" + ex.getMessage());
+                throw new RuntimeException("Konnte keine Verbindung zur Datenbank herstellen", ex);
             }
         }
     }
@@ -58,18 +71,25 @@ public class DatabaseConnection {
         try {
             Statement stmt = getConnection().createStatement();
             String sql = "CREATE TABLE IF NOT EXISTS JumpAndRuns (" +
-                    "JnrName VARCHAR(50), Published BOOLEAN, " +
+                    "JnrName VARCHAR(50), " +
+                    "Published BOOLEAN, " +
                     "startLocationX INT, startLocationY INT, startLocationZ INT, " +
-                    "YLimit INT, startTime TIME(3), CurrentPlayer VARCHAR(36))";
+                    "YLimit INT, " +
+                    "startTime TIME(3), " +
+                    "CurrentPlayer VARCHAR(36))";
             stmt.execute(sql);
             stmt.close();
             log("Tabelle 'JumpAndRuns' geprüft/erstellt.");
         } catch (SQLException e) {
-            log("Fehler beim Erstellen der Tabelle JumpAndRuns.");
-            throw new RuntimeException(e);
+            log("[ERROR] Fehler beim Erstellen der Tabelle 'JumpAndRuns'.");
+            log("[ERROR] SQLState=" + e.getSQLState() + " ErrorCode=" + e.getErrorCode() + " Message=" + e.getMessage());
+            throw new RuntimeException("Fehler beim Initialisieren der Tabelle JumpAndRuns", e);
         }
     }
 
+    /**
+     * Hilfsmethode fürs Logging.
+     */
     private static void log(String msg) {
         Bukkit.getConsoleSender().sendMessage("[JNR-DB] " + msg);
     }

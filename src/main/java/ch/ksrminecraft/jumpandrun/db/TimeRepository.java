@@ -20,7 +20,7 @@ public class TimeRepository {
     public static void initializeTimeTable(World world) {
         try {
             Statement stmt = DatabaseConnection.getConnection().createStatement();
-            String sql = "CREATE TABLE IF NOT EXISTS jnr." + world.getName() + " (" +
+            String sql = "CREATE TABLE IF NOT EXISTS `" + world.getName() + "` (" +
                     "Player CHAR(36), " +
                     "time BIGINT)";
             stmt.execute(sql);
@@ -38,8 +38,8 @@ public class TimeRepository {
     public static void inputTime(World world, Player player, long time) {
         try {
             Statement stmt = DatabaseConnection.getConnection().createStatement();
-            String sql = "INSERT INTO jnr." + world.getName() +
-                    " (Player, time) VALUES ('" + player.getUniqueId() + "', " + time + ")";
+            String sql = "INSERT INTO `" + world.getName() + "` (Player, time) VALUES ('" +
+                    player.getUniqueId() + "', " + time + ")";
             stmt.execute(sql);
             stmt.close();
             log("Zeit für " + player.getName() + " gespeichert (" + time + "ms).");
@@ -49,14 +49,10 @@ public class TimeRepository {
         }
     }
 
-    /**
-     * Holt die beste (niedrigste) Zeit in einer Welt.
-     * @return Zeit in Millisekunden oder null, wenn keine Daten vorhanden.
-     */
     public static Long getBestTime(String worldName) {
         try {
             Statement stmt = DatabaseConnection.getConnection().createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT MIN(time) as BestTime FROM jnr." + worldName);
+            ResultSet rs = stmt.executeQuery("SELECT MIN(time) as BestTime FROM `" + worldName + "`");
             Long bestTime = null;
             if (rs.next()) {
                 bestTime = rs.getLong("BestTime");
@@ -70,19 +66,15 @@ public class TimeRepository {
         }
     }
 
-    /**
-     * Holt den Spieler (Leader) mit der Bestzeit einer Welt.
-     * @return UUID als String oder null, wenn keine Daten vorhanden.
-     */
     public static String getLeader(String worldName) {
         try {
             Statement stmt = DatabaseConnection.getConnection().createStatement();
-            String sql = "SELECT Player FROM jnr." + worldName +
-                    " WHERE time = (SELECT MIN(time) FROM jnr." + worldName + ") LIMIT 1";
+            String sql = "SELECT Player FROM `" + worldName + "` " +
+                    "WHERE time = (SELECT MIN(time) FROM `" + worldName + "`) LIMIT 1";
             ResultSet rs = stmt.executeQuery(sql);
             String leader = null;
             if (rs.next()) {
-                leader = rs.getString("Player"); // UUID
+                leader = rs.getString("Player");
             }
             stmt.close();
             return leader;
@@ -92,10 +84,6 @@ public class TimeRepository {
         }
     }
 
-    /**
-     * Formatiert eine Zeit in Millisekunden zu MM:SS.mmm
-     * Beispiel: 83456ms -> "01:23.456"
-     */
     public static String formatTime(long millis) {
         long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
         long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;

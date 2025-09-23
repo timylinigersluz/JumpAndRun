@@ -19,7 +19,7 @@ public class RunRepository {
         try {
             Time startTime = Time.valueOf(LocalTime.now());
             Statement stmt = DatabaseConnection.getConnection().createStatement();
-            String sql = "UPDATE jnr.JumpAndRuns SET StartTime='" + startTime + "', " +
+            String sql = "UPDATE JumpAndRuns SET StartTime='" + startTime + "', " +
                     "CurrentPlayer='" + player.getUniqueId() + "' WHERE JnrName='" + world.getName() + "'";
             stmt.executeUpdate(sql);
             stmt.close();

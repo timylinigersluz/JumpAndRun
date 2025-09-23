@@ -18,7 +18,7 @@ public class CheckpointRepository {
      */
     public static void initializeTable() {
         try (Statement stmt = DatabaseConnection.getConnection().createStatement()) {
-            String sql = "CREATE TABLE IF NOT EXISTS jnr.Checkpoints (" +
+            String sql = "CREATE TABLE IF NOT EXISTS Checkpoints (" +
                     "WorldName VARCHAR(50)," +
                     "Idx INT," +
                     "X INT," +
@@ -35,13 +35,10 @@ public class CheckpointRepository {
 
     /**
      * Fügt einen neuen Checkpoint für eine Welt hinzu.
-     * @param worldName Name der Welt
-     * @param idx Index des Checkpoints
-     * @param loc Position des Checkpoints
      */
     public static void addCheckpoint(String worldName, int idx, Location loc) {
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(
-                "INSERT INTO jnr.Checkpoints (WorldName, Idx, X, Y, Z) VALUES (?,?,?,?,?) " +
+                "INSERT INTO Checkpoints (WorldName, Idx, X, Y, Z) VALUES (?,?,?,?,?) " +
                         "ON DUPLICATE KEY UPDATE X=?, Y=?, Z=?")) {
             ps.setString(1, worldName);
             ps.setInt(2, idx);
@@ -62,13 +59,11 @@ public class CheckpointRepository {
 
     /**
      * Holt alle Checkpoints einer Welt.
-     * @param worldName Name der Welt
-     * @return Liste mit Locations
      */
     public static List<Location> getCheckpoints(String worldName) {
         List<Location> checkpoints = new ArrayList<>();
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(
-                "SELECT X, Y, Z FROM jnr.Checkpoints WHERE WorldName=? ORDER BY Idx ASC")) {
+                "SELECT X, Y, Z FROM Checkpoints WHERE WorldName=? ORDER BY Idx ASC")) {
             ps.setString(1, worldName);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
@@ -93,7 +88,7 @@ public class CheckpointRepository {
      */
     public static int getNextIndex(String worldName) {
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(
-                "SELECT MAX(Idx) as MaxIdx FROM jnr.Checkpoints WHERE WorldName=?")) {
+                "SELECT MAX(Idx) as MaxIdx FROM Checkpoints WHERE WorldName=?")) {
             ps.setString(1, worldName);
             ResultSet rs = ps.executeQuery();
             int idx = 1;

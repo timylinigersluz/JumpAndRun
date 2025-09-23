@@ -4,6 +4,7 @@ ch\ksrminecraft\jumpandrun\utils\IslandGenerator.class
 ch\ksrminecraft\jumpandrun\db\DatabaseConnection.class
 ch\ksrminecraft\jumpandrun\utils\TestRunManager.class
 ch\ksrminecraft\jumpandrun\listeners\TestRunAbortListener.class
+ch\ksrminecraft\jumpandrun\listeners\WorldSwitchListener.class
 ch\ksrminecraft\jumpandrun\utils\ConfigManager.class
 ch\ksrminecraft\jumpandrun\commands\JnrDeleteCommand.class
 ch\ksrminecraft\jumpandrun\commands\JnrTeleportCommand.class
@@ -20,8 +21,11 @@ ch\ksrminecraft\jumpandrun\db\TimeRepository.class
 ch\ksrminecraft\jumpandrun\listeners\CheckpointCleanupListener.class
 ch\ksrminecraft\jumpandrun\listeners\CheckpointRespawnListener.class
 ch\ksrminecraft\jumpandrun\utils\SignUpdater.class
+ch\ksrminecraft\jumpandrun\commands\JnrTabCompleter.class
+ch\ksrminecraft\jumpandrun\commands\JnrContinueCommand.class
 ch\ksrminecraft\jumpandrun\listeners\PressurePlateListener.class
 ch\ksrminecraft\jumpandrun\utils\TeleportUtils.class
+ch\ksrminecraft\jumpandrun\commands\JnrAbortCommand.class
 ch\ksrminecraft\jumpandrun\utils\TimeUtils.class
 ch\ksrminecraft\jumpandrun\db\WorldRepository.class
 ch\ksrminecraft\jumpandrun\commands\JnrCreateCommand.class

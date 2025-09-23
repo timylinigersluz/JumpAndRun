@@ -6,83 +6,98 @@ import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.utils.TestRunManager;
 import ch.ksrminecraft.jumpandrun.utils.TimeManager;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Listener, der Spielerinteraktionen mit Druckplatten überwacht und basierend auf
- * dem Material den Start, Checkpoints und das Ende eines Runs registriert.
+ * Listener für Druckplatten: Start, Checkpoints, Ziel.
  */
 public class PressurePlateListener implements Listener {
 
-    /** Letzter Checkpoint pro Spieler (UUID). */
     private static final Map<UUID, Location> lastCheckpoints = new HashMap<>();
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.PHYSICAL) return;
+
         Player player = event.getPlayer();
         Block clickedBlock = event.getClickedBlock();
-
         if (clickedBlock == null) return;
 
         String worldName = clickedBlock.getWorld().getName();
         Material blockType = clickedBlock.getType();
 
-        // Materialien aus Config laden
         Material startPlate = JumpAndRun.getConfigManager().getStartPlate();
         Material endPlate = JumpAndRun.getConfigManager().getEndPlate();
         Material checkpointPlate = JumpAndRun.getConfigManager().getCheckpointPlate();
 
-        // Startdruckplatte → Zeitmessung starten
+        // Startdruckplatte → Zeit starten
         if (blockType == startPlate) {
             TimeManager.inputStartTime(clickedBlock.getWorld(), player);
+            player.sendMessage(ChatColor.YELLOW + "Dein Lauf hat begonnen!");
             debug(player.getName() + " hat die Startdruckplatte in Welt " + worldName + " betreten.");
         }
 
-        // Checkpointdruckplatte → Spieler-Checkpoint setzen
+        // Checkpoint
         else if (blockType == checkpointPlate) {
             Location cp = clickedBlock.getLocation();
             lastCheckpoints.put(player.getUniqueId(), cp);
 
-            // Wenn Welt im Draft: Checkpoint auch in DB speichern
             if (!WorldRepository.isPublished(worldName)) {
                 int idx = CheckpointRepository.getNextIndex(worldName);
                 CheckpointRepository.addCheckpoint(worldName, idx, cp);
             }
 
-            player.sendMessage("§eCheckpoint erreicht!");
+            player.sendMessage(ChatColor.GOLD + "Checkpoint erreicht!");
             debug(player.getName() + " hat einen Checkpoint in Welt " + worldName + " erreicht.");
         }
 
-        // Zieldruckplatte → Zeitmessung beenden
+        // Zieldruckplatte
         else if (blockType == endPlate) {
             if (TestRunManager.isTesting(player)) {
-                // Ersteller beendet seinen Test → Welt wird veröffentlicht
+                // Herkunfts-Location laden
+                Location origin = WorldSwitchListener.getOrigin(player);
+                if (origin != null) {
+                    player.teleport(origin);
+                    WorldSwitchListener.clearOrigin(player);
+                } else {
+                    // Fallback Lobby-Spawn
+                    player.teleport(Bukkit.getWorld("world").getSpawnLocation());
+                }
+
+                // Meldungen
+                player.sendMessage(ChatColor.GREEN + "✔ Test erfolgreich abgeschlossen!");
+                player.sendMessage(ChatColor.AQUA + "Das JumpAndRun ist jetzt startklar.");
+                player.sendMessage(ChatColor.YELLOW + "Platziere ein Schild, um es öffentlich zugänglich zu machen.");
+
+                // Schild ins Inventar
+                player.getInventory().addItem(new ItemStack(Material.OAK_SIGN, 1));
+
                 TestRunManager.completeTest(player);
-                debug("Ersteller " + player.getName() + " hat seinen Test-Run in Welt " + worldName + " abgeschlossen → Welt veröffentlicht.");
+                debug("Ersteller " + player.getName() + " hat seinen Test-Run abgeschlossen.");
             } else {
                 if (WorldRepository.isPublished(worldName)) {
                     TimeManager.calcTime(clickedBlock.getWorld(), player);
-                    debug(player.getName() + " hat die Zieldruckplatte in Welt " + worldName + " betreten (Run-Zeit gespeichert).");
+                    debug(player.getName() + " hat die Zieldruckplatte in Welt " + worldName + " betreten (Zeit gespeichert).");
                 } else {
-                    player.sendMessage("§cDieses JumpAndRun ist noch im Draft-Modus und nicht spielbar.");
+                    player.sendMessage(ChatColor.RED + "Dieses JumpAndRun ist noch nicht veröffentlicht.");
                 }
             }
         }
     }
 
-    /**
-     * Liefert den zuletzt gespeicherten Checkpoint eines Spielers zurück.
-     */
     public static Location getLastCheckpoint(Player player) {
         return lastCheckpoints.get(player.getUniqueId());
     }

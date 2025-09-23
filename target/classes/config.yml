@@ -2,7 +2,7 @@ schematicPath: "JumpAndRunIsland.schem"
 
 debug: true
 
-# JumpAndRun-DB (besteht schon bei dir)
+# JumpAndRun-DB
 mysql:
   host: localhost
   port: 3306
@@ -10,7 +10,7 @@ mysql:
   user: root
   password: geheim
 
-# Punkte-DB für RankPointsAPI (separat!)
+# Punkte-DB für RankPointsAPI
 pointsdb:
   host: localhost
   port: 3306

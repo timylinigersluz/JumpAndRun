@@ -5,7 +5,6 @@ import ch.ksrminecraft.jumpandrun.db.DatabaseConnection;
 import ch.ksrminecraft.jumpandrun.listeners.*;
 import ch.ksrminecraft.jumpandrun.utils.ConfigManager;
 import ch.ksrminecraft.jumpandrun.utils.PointsService;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -46,19 +45,31 @@ public final class JumpAndRun extends JavaPlugin {
 
         // JumpAndRun-Datenbank initialisieren
         try {
+            getLogger().info("[JNR-DEBUG] Starte Initialisierung der JumpAndRun-DB ...");
             DatabaseConnection.initializeWorldTable();
+            getLogger().info("[JNR-DEBUG] DB-Initialisierung abgeschlossen.");
         } catch (RuntimeException e) {
-            getLogger().severe("Keine DB gefunden, Plugin fährt runter!");
+            getLogger().severe("[JNR-ERROR] Konnte keine Verbindung zur JumpAndRun-DB aufbauen!");
+            getLogger().severe("Fehlermeldung: " + e.getMessage());
+            e.printStackTrace();
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
         // RankPointsAPI initialisieren (separate Punkte-DB)
         try {
+            getLogger().info("[JNR-DEBUG] Starte Initialisierung der Punkte-DB (RankPointsAPI)...");
+            getLogger().info("[JNR-DEBUG] Host=" + getConfig().getString("pointsdb.host") +
+                    " Port=" + getConfig().getInt("pointsdb.port") +
+                    " DB=" + getConfig().getString("pointsdb.database") +
+                    " User=" + getConfig().getString("pointsdb.user"));
             PointsService.init();
+            getLogger().info("[JNR-DEBUG] PointsService erfolgreich initialisiert.");
         } catch (Exception e) {
-            getLogger().severe("PointsService konnte nicht initialisiert werden! Punktevergabe deaktiviert.");
+            getLogger().severe("[JNR-ERROR] PointsService konnte nicht initialisiert werden!");
+            getLogger().severe("Fehlermeldung: " + e.getMessage());
             e.printStackTrace();
+            getLogger().severe("[JNR-ERROR] Punktevergabe wird deaktiviert.");
         }
 
         // Listener initialisieren und registrieren
@@ -73,9 +84,10 @@ public final class JumpAndRun extends JavaPlugin {
 
         // Command-Dispatcher für /jnr
         if (getCommand("jnr") != null) {
+            // Executor setzen
             getCommand("jnr").setExecutor((sender, cmd, label, args) -> {
                 if (args.length == 0) {
-                    sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|publish|ready>");
+                    sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort>");
                     return true;
                 }
                 switch (args[0].toLowerCase()) {
@@ -89,11 +101,18 @@ public final class JumpAndRun extends JavaPlugin {
                         return new JnrListCommand().onCommand(sender, cmd, label, args);
                     case "ready":
                         return new JnrReadyCommand().onCommand(sender, cmd, label, args);
+                    case "continue":
+                        return new JnrContinueCommand().onCommand(sender, cmd, label, args);
+                    case "abort":
+                        return new JnrAbortCommand().onCommand(sender, cmd, label, args);
                     default:
-                        sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|publish|ready>");
+                        sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort>");
                         return true;
                 }
             });
+
+            // TabCompleter registrieren
+            getCommand("jnr").setTabCompleter(new JnrTabCompleter());
         } else {
             getLogger().severe("Befehl /jnr konnte nicht registriert werden (plugin.yml prüfen!)");
         }

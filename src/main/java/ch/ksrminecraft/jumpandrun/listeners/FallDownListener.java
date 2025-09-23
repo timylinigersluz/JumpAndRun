@@ -4,6 +4,7 @@ import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,30 +20,35 @@ public class FallDownListener implements Listener {
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        String worldName = player.getWorld().getName();
+        World world = player.getWorld();
+        String worldName = world.getName();
 
-        // Nur in published JnRs reagieren (außer Debugmodus)
-        if (!WorldRepository.isPublished(worldName) && !JumpAndRun.getConfigManager().isDebug()) {
+        // Nur in registrierten JnRs reagieren (außer Debugmodus)
+        if (!WorldRepository.exists(worldName) && !JumpAndRun.getConfigManager().isDebug()) {
             return;
         }
 
         int yLimit = WorldRepository.getYLimit(worldName);
 
-        // Spieler unter der Grenze?
+        // Spieler unterhalb der Grenze?
         if (player.getY() < yLimit) {
             Location teleportLocation = null;
 
             // 1. Prüfen ob Spieler einen Checkpoint hat
             Location checkpoint = PressurePlateListener.getLastCheckpoint(player);
             if (checkpoint != null) {
-                teleportLocation = checkpoint.clone().add(0, 1, 0); // 1 Block höher
+                teleportLocation = checkpoint.clone().add(0, 1, 0);
             }
 
-            // 2. Fallback: Startlocation
+            // 2. Fallback: Mitte der Startinsel
             if (teleportLocation == null) {
-                teleportLocation = WorldRepository.getStartLocation(worldName);
-                if (teleportLocation != null) {
-                    teleportLocation = teleportLocation.clone().add(0, 1, 0); // auch hier 1 Block höher
+                Location start = WorldRepository.getStartLocation(worldName);
+                if (start != null) {
+                    teleportLocation = start.clone().add(0, JumpAndRun.height + 1, 0);
+
+                    // Blickrichtung zur Zielinsel setzen (einfach: +20 Blöcke auf X-Achse)
+                    Location goal = new Location(world, start.getX() + 20, start.getY(), start.getZ());
+                    teleportLocation.setDirection(goal.toVector().subtract(teleportLocation.toVector()));
                 }
             }
 

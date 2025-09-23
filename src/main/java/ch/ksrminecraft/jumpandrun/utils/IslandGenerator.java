@@ -89,11 +89,11 @@ public class IslandGenerator {
             }
         }
 
-        // Ranken + Druckplatten setzen
+        // Ranken + Start-Druckplatte setzen
         int vineStartY = centerLocation.getBlockY() + height * 2 / 3;
         int vineEndY = centerLocation.getBlockY() + height;
         addVinesOnTop1(world, centerLocation, radius, vineStartY, vineEndY, random);
-        addPressurePlates(centerLocation, radius, height);
+        addStartPressurePlate(centerLocation, height);
 
         if (isDebug()) {
             Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Startinsel fertig erstellt.");
@@ -123,30 +123,20 @@ public class IslandGenerator {
     }
 
     /**
-     * Platziert Start- und Ziel-Druckplatten auf der Startinsel.
+     * Platziert die Startdruckplatte 10 Blöcke östlich der Startinsel.
      */
-    private static void addPressurePlates(Location centerLocation, int radius, int height) {
-        // Startdruckplatte
-        Location startPlateLoc = centerLocation.clone().add(radius - 5, height + 1, 0);
+    private static void addStartPressurePlate(Location centerLocation, int height) {
+        Location startPlateLoc = centerLocation.clone().add(5, height + 1, 0);
         Block startBlock = startPlateLoc.getWorld().getBlockAt(startPlateLoc);
         startBlock.setType(Material.HEAVY_WEIGHTED_PRESSURE_PLATE);
 
         if (isDebug()) {
             Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Startdruckplatte bei " + formatLocation(startPlateLoc));
         }
-
-        // Zieldruckplatte
-        Location targetPlateLoc = centerLocation.clone().add(-(radius - 5), height + 1, 0);
-        Block targetBlock = targetPlateLoc.getWorld().getBlockAt(targetPlateLoc);
-        targetBlock.setType(Material.LIGHT_WEIGHTED_PRESSURE_PLATE);
-
-        if (isDebug()) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Zieldruckplatte bei " + formatLocation(targetPlateLoc));
-        }
     }
 
     /**
-     * Generiert die Zielinsel mit spiegelverkehrter Geometrie.
+     * Generiert die Zielinsel und platziert die End-Druckplatte darauf.
      */
     public static void createFloatingIslandGoal(Location centerLocation, int radius, int height) {
         World world = centerLocation.getWorld();
@@ -198,6 +188,9 @@ public class IslandGenerator {
         int vineEndY = centerLocation.getBlockY() + height;
         addVinesOnTop2(world, centerLocation, radius, vineStartY, vineEndY, random);
 
+        // Enddruckplatte auf der Zielinsel
+        addEndPressurePlate(centerLocation, height);
+
         if (isDebug()) {
             Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Zielinsel fertig erstellt.");
         }
@@ -222,6 +215,19 @@ public class IslandGenerator {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Platziert die End-Druckplatte zentral auf der Zielinsel.
+     */
+    private static void addEndPressurePlate(Location centerLocation, int height) {
+        Location endPlateLoc = centerLocation.clone().add(0, height + 1, 0);
+        Block endBlock = endPlateLoc.getWorld().getBlockAt(endPlateLoc);
+        endBlock.setType(Material.LIGHT_WEIGHTED_PRESSURE_PLATE);
+
+        if (isDebug()) {
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Zieldruckplatte bei " + formatLocation(endPlateLoc));
         }
     }
 

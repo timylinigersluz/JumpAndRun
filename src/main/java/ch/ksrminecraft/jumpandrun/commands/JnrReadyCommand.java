@@ -3,20 +3,12 @@ package ch.ksrminecraft.jumpandrun.commands;
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.utils.TestRunManager;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-/**
- * Subcommand: /jnr ready
- * Setzt den Ersteller in den Testmodus: Survival + Timer
- */
 public class JnrReadyCommand implements CommandExecutor {
 
     @Override
@@ -41,21 +33,31 @@ public class JnrReadyCommand implements CommandExecutor {
             return true;
         }
 
-        // Startposition holen
+        // Startposition aus DB laden
         Location start = WorldRepository.getStartLocation(world.getName());
         if (start == null) {
             player.sendMessage(ChatColor.RED + "Startposition konnte nicht geladen werden.");
             return true;
         }
 
-        // Spieler in Survival setzen und zum Start teleportieren
-        player.teleport(start.clone().add(0, JumpAndRun.height + 1, 0));
-        player.setGameMode(GameMode.SURVIVAL);
+        // Lobby-Location merken
+        JumpAndRun.getPlugin().getConfig().set("players." + player.getUniqueId() + ".lobbyLocation", player.getLocation());
+        JumpAndRun.getPlugin().saveConfig();
 
-        // TestRun starten
+        // Teleport in Mitte der Startinsel
+        Location tpLoc = start.clone().add(0, JumpAndRun.height + 1, 0);
+
+        // Blickrichtung: zur Mitte der Zielinsel
+        Location goal = new Location(world, start.getX() + 20, start.getY(), start.getZ()); // grobe Annäherung
+        tpLoc.setDirection(goal.toVector().subtract(tpLoc.toVector()));
+
+        player.teleport(tpLoc);
+        player.setGameMode(GameMode.ADVENTURE);
+
+        // TestRun setzen, aber Zeit NICHT starten
         TestRunManager.startTest(player);
 
-        player.sendMessage(ChatColor.GREEN + "Testmodus gestartet! Spiele dein eigenes JumpAndRun in Survival durch.");
+        player.sendMessage(ChatColor.GREEN + "Testmodus gestartet! Die Zeit läuft erst, wenn du die Startdruckplatte betrittst.");
         Bukkit.getConsoleSender().sendMessage("[JNR] Spieler " + player.getName() + " testet Welt " + world.getName());
 
         return true;

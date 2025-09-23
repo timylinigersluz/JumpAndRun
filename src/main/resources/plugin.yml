@@ -6,8 +6,8 @@ softdepend: ['Multiverse-Core', 'WorldEdit', 'RankPointsAPI']
 
 commands:
   jnr:
-    description: Hauptbefehl für Jump and Run (/jnr create|delete|teleport|list|publish|ready)
-    usage: /jnr <create|delete|teleport|list|publish|ready>
+    description: Hauptbefehl für Jump and Run (/jnr create|delete|teleport|list|ready|continue|abort)
+    usage: /jnr <create|delete|teleport|list|ready|continue|abort>
     permission: jumpandrun.use
     aliases: [jumpandrun, jnrp]
 
@@ -32,12 +32,16 @@ permissions:
     description: Erlaubt die Auflistung aller JumpAndRun-Welten
     default: true
 
-  jumpandrun.publish:
-    description: Erlaubt das Freigeben einer JumpAndRun-Welt (aus Draft → Live)
-    default: op
-
   jumpandrun.ready:
     description: Setzt die Welt in den Testmodus, um sie selbst im Survival zu spielen
+    default: op
+
+  jumpandrun.continue:
+    description: Erlaubt das Fortsetzen einer Draft-Welt
+    default: op
+
+  jumpandrun.abort:
+    description: Erlaubt das Abbrechen eines Testlaufs (mit Option Welt behalten oder löschen)
     default: op
 
   jumpandrun.sign.create:
