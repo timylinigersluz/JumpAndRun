@@ -2,14 +2,12 @@ package ch.ksrminecraft.jumpandrun;
 
 import ch.ksrminecraft.jumpandrun.commands.*;
 import ch.ksrminecraft.jumpandrun.db.DatabaseConnection;
-import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.listeners.*;
 import ch.ksrminecraft.jumpandrun.utils.ConfigManager;
 import ch.ksrminecraft.jumpandrun.utils.PointsService;
 import ch.ksrminecraft.jumpandrun.utils.WorldSyncManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.event.Listener;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -96,6 +94,7 @@ public final class JumpAndRun extends JavaPlugin {
         pm.registerEvents(new WorldSwitchListener(), this);
         pm.registerEvents(new DeathListener(), this);
         pm.registerEvents(new LeaveItemListener(), this);
+        pm.registerEvents(new BlockListener(), this);
 
         // AliasPrompt aktivieren
         ch.ksrminecraft.jumpandrun.utils.AliasPromptManager.init();
