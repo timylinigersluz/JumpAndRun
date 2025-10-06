@@ -2,6 +2,7 @@ name: JumpAndRun
 version: '${project.version}'
 main: ch.ksrminecraft.jumpandrun.JumpAndRun
 api-version: '1.21'
+load: POSTWORLD
 softdepend: ['Multiverse-Core', 'WorldEdit', 'RankPointsAPI']
 
 commands:

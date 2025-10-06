@@ -17,6 +17,7 @@ ch\ksrminecraft\jumpandrun\utils\AliasPromptManager.class
 ch\ksrminecraft\jumpandrun\commands\JnrUnpublishCommand.class
 ch\ksrminecraft\jumpandrun\JumpAndRun.class
 ch\ksrminecraft\jumpandrun\listeners\FallDownListener.class
+ch\ksrminecraft\jumpandrun\listeners\BlockListener.class
 ch\ksrminecraft\jumpandrun\listeners\DeathListener.class
 ch\ksrminecraft\jumpandrun\listeners\SignListener.class
 ch\ksrminecraft\jumpandrun\models\JnRWorld.class

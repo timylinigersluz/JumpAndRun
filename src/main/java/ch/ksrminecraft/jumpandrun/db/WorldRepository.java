@@ -10,18 +10,22 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Datenbankoperationen für Jump-And-Run Welten (Metadaten).
- * Verwendet zentrale Tabelle "JumpAndRuns".
+ * Verwaltet sämtliche Datenbankoperationen für JumpAndRun-Welten.
+ * Tabelle: JumpAndRuns
  */
 public class WorldRepository {
 
+    // === Welt-Registrierung ===
+
     /**
-     * Registriert eine neue Welt in der JumpAndRuns-Tabelle.
+     * Fügt eine neue JumpAndRun-Welt in die Datenbank ein.
      */
     public static void registerWorld(Location spawnpoint, int height, String creatorId) {
-        String sql = "INSERT INTO JumpAndRuns " +
-                "(worldName, alias, creator, published, ready, startLocationX, startLocationY, startLocationZ, yLimit, currentPlayer) " +
-                "VALUES (?, NULL, ?, false, false, ?, ?, ?, ?, NULL)";
+        String sql = """
+                INSERT INTO JumpAndRuns 
+                (worldName, alias, creator, published, ready, startLocationX, startLocationY, startLocationZ, yLimit, currentPlayer)
+                VALUES (?, NULL, ?, false, false, ?, ?, ?, ?, NULL)
+                """;
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
             ps.setString(1, spawnpoint.getWorld().getName());
             ps.setString(2, creatorId);
@@ -32,26 +36,34 @@ public class WorldRepository {
             ps.executeUpdate();
             log("Welt " + spawnpoint.getWorld().getName() + " von " + creatorId + " registriert.");
         } catch (SQLException e) {
-            log("Fehler beim Registrieren der Welt.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Registrieren der Welt.", e);
         }
     }
 
-    /**
-     * Holt die interne ID einer Welt anhand des technischen World-Namens.
-     */
+    // === Abfragen & Verwaltung ===
+
+    public static boolean exists(String worldName) {
+        String sql = "SELECT 1 FROM JumpAndRuns WHERE worldName = ?";
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
+            ps.setString(1, worldName);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            logError("Fehler bei exists(" + worldName + ")", e);
+            return false;
+        }
+    }
+
     public static int getId(String worldName) {
         String sql = "SELECT id FROM JumpAndRuns WHERE worldName = ?";
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
             ps.setString(1, worldName);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("id");
-                }
+                if (rs.next()) return rs.getInt("id");
             }
         } catch (SQLException e) {
-            log("Fehler beim Ermitteln der ID für Welt " + worldName);
-            throw new RuntimeException(e);
+            logError("Fehler beim Ermitteln der ID für Welt " + worldName, e);
         }
         return -1;
     }
@@ -63,8 +75,7 @@ public class WorldRepository {
             ps.executeUpdate();
             log("Welt " + worldName + " aus DB entfernt.");
         } catch (SQLException e) {
-            log("Fehler beim Entfernen der Welt " + worldName);
-            throw new RuntimeException(e);
+            logError("Fehler beim Entfernen der Welt " + worldName, e);
         }
     }
 
@@ -77,23 +88,9 @@ public class WorldRepository {
                 worlds.add(rs.getString("worldName"));
             }
         } catch (SQLException e) {
-            log("Fehler beim Laden aller Welten.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Laden aller Welten.", e);
         }
         return worlds;
-    }
-
-    public static boolean exists(String worldName) {
-        String sql = "SELECT 1 FROM JumpAndRuns WHERE worldName = ?";
-        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
-            ps.setString(1, worldName);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        } catch (SQLException e) {
-            log("Fehler bei exists(" + worldName + ")");
-            throw new RuntimeException(e);
-        }
     }
 
     // === Alias-Handling ===
@@ -106,8 +103,7 @@ public class WorldRepository {
             ps.executeUpdate();
             log("Alias für Welt " + worldName + " gesetzt auf '" + alias + "'");
         } catch (SQLException e) {
-            log("Fehler beim Setzen des Alias.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Setzen des Alias für " + worldName, e);
         }
     }
 
@@ -116,13 +112,10 @@ public class WorldRepository {
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
             ps.setString(1, worldName);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("alias");
-                }
+                if (rs.next()) return rs.getString("alias");
             }
         } catch (SQLException e) {
-            log("Fehler beim Laden des Alias.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Laden des Alias für " + worldName, e);
         }
         return null;
     }
@@ -132,13 +125,10 @@ public class WorldRepository {
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
             ps.setString(1, alias);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("worldName");
-                }
+                if (rs.next()) return rs.getString("worldName");
             }
         } catch (SQLException e) {
-            log("Fehler beim Suchen nach Welt per Alias.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Suchen nach Welt per Alias.", e);
         }
         return null;
     }
@@ -150,15 +140,12 @@ public class WorldRepository {
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
             ps.setString(1, worldName);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("creator");
-                }
+                if (rs.next()) return rs.getString("creator");
             }
-            return null;
         } catch (SQLException e) {
-            log("Fehler beim Laden des Erstellers.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Laden des Erstellers für Welt " + worldName, e);
         }
+        return null;
     }
 
     public static boolean isPublished(String worldName) {
@@ -169,9 +156,9 @@ public class WorldRepository {
                 return rs.next() && rs.getBoolean("published");
             }
         } catch (SQLException e) {
-            log("Fehler beim Prüfen von Published.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Prüfen von Published für " + worldName, e);
         }
+        return false;
     }
 
     public static void setPublished(String worldName, boolean published) {
@@ -182,8 +169,7 @@ public class WorldRepository {
             ps.executeUpdate();
             log("Welt " + worldName + " Published=" + published);
         } catch (SQLException e) {
-            log("Fehler beim Setzen von Published.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Setzen von Published für " + worldName, e);
         }
     }
 
@@ -195,9 +181,9 @@ public class WorldRepository {
                 return rs.next() && rs.getBoolean("ready");
             }
         } catch (SQLException e) {
-            log("Fehler beim Prüfen von Ready.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Prüfen von Ready für " + worldName, e);
         }
+        return false;
     }
 
     public static void setReady(String worldName, boolean ready) {
@@ -208,8 +194,7 @@ public class WorldRepository {
             ps.executeUpdate();
             log("Welt " + worldName + " Ready=" + ready);
         } catch (SQLException e) {
-            log("Fehler beim Setzen von Ready.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Setzen von Ready für " + worldName, e);
         }
     }
 
@@ -224,18 +209,18 @@ public class WorldRepository {
                     double x = rs.getDouble("startLocationX");
                     double y = rs.getDouble("startLocationY");
                     double z = rs.getDouble("startLocationZ");
-
-                    World bukkitWorld = Bukkit.getWorld(worldName);
-                    if (bukkitWorld != null) {
-                        return new Location(bukkitWorld, x, y, z);
+                    World world = Bukkit.getWorld(worldName);
+                    if (world != null) {
+                        return new Location(world, x, y, z);
+                    } else {
+                        log("Warnung: Welt '" + worldName + "' nicht geladen (getStartLocation).");
                     }
                 }
             }
-            return null;
         } catch (SQLException e) {
-            log("Fehler beim Laden der StartLocation für Welt " + worldName);
-            throw new RuntimeException(e);
+            logError("Fehler beim Laden der StartLocation für Welt " + worldName, e);
         }
+        return null;
     }
 
     public static int getYLimit(String worldName) {
@@ -243,16 +228,15 @@ public class WorldRepository {
         try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql)) {
             ps.setString(1, worldName);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("yLimit");
-                }
+                if (rs.next()) return rs.getInt("yLimit");
             }
-            return 0;
         } catch (SQLException e) {
-            log("Fehler beim Laden des YLimit für Welt " + worldName);
-            throw new RuntimeException(e);
+            logError("Fehler beim Laden des YLimit für Welt " + worldName, e);
         }
+        return 0;
     }
+
+    // === Weltlisten ===
 
     public static List<String> getPublishedWorlds() {
         List<String> worlds = new ArrayList<>();
@@ -263,8 +247,7 @@ public class WorldRepository {
                 worlds.add(rs.getString("worldName"));
             }
         } catch (SQLException e) {
-            log("Fehler beim Laden der veröffentlichten Welten.");
-            throw new RuntimeException(e);
+            logError("Fehler beim Laden der veröffentlichten Welten.", e);
         }
         return worlds;
     }
@@ -280,30 +263,25 @@ public class WorldRepository {
                 }
             }
         } catch (SQLException e) {
-            log("Fehler beim Laden der Draft-Welten von " + playerId);
-            throw new RuntimeException(e);
+            logError("Fehler beim Laden der Draft-Welten von " + playerId, e);
         }
         return worlds;
     }
 
-    private static void log(String msg) {
-        Bukkit.getConsoleSender().sendMessage("[JNR-DB] " + msg);
-    }
+    // === Hilfsmethoden ===
 
     public static int ensureExists(String worldName) {
         int id = getId(worldName);
-        if (id != -1) {
-            return id;
-        }
+        if (id != -1) return id;
 
-        String sql = "INSERT INTO JumpAndRuns (worldName, alias, creator, published, ready, " +
-                "startLocationX, startLocationY, startLocationZ, yLimit, currentPlayer) " +
-                "VALUES (?, NULL, NULL, false, false, 0, 0, 0, 0, NULL)";
-        try (PreparedStatement ps = DatabaseConnection.getConnection()
-                .prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        String sql = """
+                INSERT INTO JumpAndRuns 
+                (worldName, alias, creator, published, ready, startLocationX, startLocationY, startLocationZ, yLimit, currentPlayer)
+                VALUES (?, NULL, NULL, false, false, 0, 0, 0, 0, NULL)
+                """;
+        try (PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, worldName);
             ps.executeUpdate();
-
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
                     int newId = rs.getInt(1);
@@ -312,9 +290,17 @@ public class WorldRepository {
                 }
             }
         } catch (SQLException e) {
-            log("Fehler beim automatischen Registrieren der Welt " + worldName);
-            e.printStackTrace();
+            logError("Fehler beim automatischen Registrieren der Welt " + worldName, e);
         }
         return -1;
+    }
+
+    private static void log(String msg) {
+        Bukkit.getConsoleSender().sendMessage("[JNR-DB] " + msg);
+    }
+
+    private static void logError(String msg, Exception e) {
+        Bukkit.getConsoleSender().sendMessage("[JNR-DB] §c" + msg);
+        e.printStackTrace();
     }
 }

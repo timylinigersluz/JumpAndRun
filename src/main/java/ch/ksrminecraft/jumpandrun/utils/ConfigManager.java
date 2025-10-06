@@ -6,25 +6,22 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
-import java.util.Set;
-
 /**
  * Zentraler Config-Manager für das JumpAndRun-Plugin.
  * Lädt Werte aus der config.yml und stellt sie dem restlichen Plugin bereit.
- * Bereinigt ungültige Locations beim Start.
+ * Bereinigt ungültige Location-Einträge beim Start, ohne unbekannte Welten zu laden.
  */
 public class ConfigManager {
 
     private final JumpAndRun plugin;
 
     private boolean debug;
-
     private Material startPlate;
     private Material endPlate;
     private Material checkpointPlate;
     private String fallbackWorld;
 
-    // DB-Settings
+    // --- DB Settings ---
     private boolean jnrDbEnabled;
     private String jnrHost;
     private int jnrPort;
@@ -46,8 +43,8 @@ public class ConfigManager {
     }
 
     /**
-     * Liest alle benötigten Werte aus der config.yml ein.
-     * Entfernt ungültige Location-Einträge (z. B. unbekannte Welten).
+     * Lädt alle Konfigurationen und entfernt ungültige Welteinträge,
+     * ohne die Location-Deserialisierung zu triggern.
      */
     public void loadConfig() {
         plugin.reloadConfig();
@@ -56,7 +53,7 @@ public class ConfigManager {
         // Debugmodus
         this.debug = config.getBoolean("debug", false);
 
-        // JumpAndRun-DB
+        // --- JumpAndRun-DB ---
         this.jnrDbEnabled = config.getBoolean("jumpandrun.enabled", true);
         this.jnrHost = config.getString("jumpandrun.host", "localhost");
         this.jnrPort = config.getInt("jumpandrun.port", 3306);
@@ -64,7 +61,7 @@ public class ConfigManager {
         this.jnrUser = config.getString("jumpandrun.user", "root");
         this.jnrPassword = config.getString("jumpandrun.password", "");
 
-        // Punkte-DB
+        // --- Punkte-DB ---
         this.pointsDbEnabled = config.getBoolean("pointsdb.enabled", true);
         this.pointsExcludeStaff = config.getBoolean("pointsdb.excludeStaff", true);
         this.pointsHost = config.getString("pointsdb.host", "localhost");
@@ -73,7 +70,7 @@ public class ConfigManager {
         this.pointsUser = config.getString("pointsdb.user", "root");
         this.pointsPassword = config.getString("pointsdb.password", "");
 
-        // Druckplatten
+        // --- Druckplatten ---
         try {
             this.startPlate = Material.valueOf(config.getString("plates.start", "HEAVY_WEIGHTED_PRESSURE_PLATE"));
             this.endPlate = Material.valueOf(config.getString("plates.end", "LIGHT_WEIGHTED_PRESSURE_PLATE"));
@@ -85,29 +82,31 @@ public class ConfigManager {
             this.checkpointPlate = Material.STONE_PRESSURE_PLATE;
         }
 
-        // Fallback-Welt
+        // --- Fallback-Welt ---
         this.fallbackWorld = config.getString("fallback-world", "world");
 
-        // Ungültige Location-Einträge aufräumen
+        // --- Ungültige Welten bei gespeicherten Locations entfernen ---
         ConfigurationSection playersSection = config.getConfigurationSection("players");
         if (playersSection != null) {
             for (String uuid : playersSection.getKeys(false)) {
                 ConfigurationSection playerSec = playersSection.getConfigurationSection(uuid);
-                if (playerSec != null) {
-                    ConfigurationSection lobbyLoc = playerSec.getConfigurationSection("lobbyLocation");
-                    if (lobbyLoc != null) {
-                        String worldName = lobbyLoc.getString("world");
-                        if (worldName != null && Bukkit.getWorld(worldName) == null) {
-                            playerSec.set("lobbyLocation", null);
-                            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Ungültige LobbyLocation für Spieler " + uuid +
-                                    " entfernt (Welt " + worldName + " nicht gefunden).");
-                        }
+                if (playerSec == null) continue;
+
+                ConfigurationSection lobbyLoc = playerSec.getConfigurationSection("lobbyLocation");
+                if (lobbyLoc != null) {
+                    String worldName = lobbyLoc.getString("world");
+                    if (worldName != null && Bukkit.getWorld(worldName) == null) {
+                        playerSec.set("lobbyLocation", null);
+                        if (debug)
+                            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Ungültige LobbyLocation für Spieler "
+                                    + uuid + " entfernt (Welt '" + worldName + "' nicht geladen).");
                     }
                 }
             }
             plugin.saveConfig();
         }
 
+        // --- Logausgabe ---
         if (debug) {
             Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Config geladen (Debug-Modus aktiv). " +
                     "Platten: Start=" + startPlate + ", Ziel=" + endPlate + ", Checkpoint=" + checkpointPlate +
@@ -119,15 +118,14 @@ public class ConfigManager {
         }
     }
 
-    // === Getter ===
-    public String getFallbackWorld() { return fallbackWorld; }
+    // --- Getter ---
     public boolean isDebug() { return debug; }
+    public String getFallbackWorld() { return fallbackWorld; }
 
     public Material getStartPlate() { return startPlate; }
     public Material getEndPlate() { return endPlate; }
     public Material getCheckpointPlate() { return checkpointPlate; }
 
-    // JumpAndRun-DB
     public boolean isJnrDbEnabled() { return jnrDbEnabled; }
     public String getJnrHost() { return jnrHost; }
     public int getJnrPort() { return jnrPort; }
@@ -135,7 +133,6 @@ public class ConfigManager {
     public String getJnrUser() { return jnrUser; }
     public String getJnrPassword() { return jnrPassword; }
 
-    // Punkte-DB
     public boolean isPointsDbEnabled() { return pointsDbEnabled; }
     public boolean isPointsExcludeStaff() { return pointsExcludeStaff; }
     public String getPointsHost() { return pointsHost; }

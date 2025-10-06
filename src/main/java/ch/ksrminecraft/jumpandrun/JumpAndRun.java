@@ -11,8 +11,6 @@ import org.bukkit.Location;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-
 /**
  * Haupteinstiegspunkt des JumpAndRun-Plugins.
  * Initialisiert Listener, Befehle, Datenbank-Verbindungen sowie die Konfiguration.
@@ -34,45 +32,40 @@ public final class JumpAndRun extends JavaPlugin {
     public void onEnable() {
         plugin = this;
 
-        // Config laden
+        // --- Config laden ---
         saveDefaultConfig();
         configManager = new ConfigManager(this);
+
         if (configManager.isDebug()) {
             getLogger().info("[JNR-DEBUG] Config geladen, Debugmodus aktiv.");
         }
 
-        // JumpAndRun-Datenbank initialisieren
+        // --- JumpAndRun-Datenbank initialisieren ---
         try {
             getLogger().info("[JNR-DEBUG] Starte Initialisierung der JumpAndRun-DB ...");
             DatabaseConnection.initializeWorldTables();
             getLogger().info("[JNR-DEBUG] DB-Initialisierung abgeschlossen.");
         } catch (RuntimeException e) {
             getLogger().severe("[JNR-ERROR] Konnte keine Verbindung zur JumpAndRun-DB aufbauen!");
-            getLogger().severe("Fehlermeldung: " + e.getMessage());
             e.printStackTrace();
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
-        // RankPointsAPI initialisieren
+        // --- RankPointsAPI initialisieren ---
         try {
             getLogger().info("[JNR-DEBUG] Starte Initialisierung der Punkte-DB (RankPointsAPI)...");
-            getLogger().info("[JNR-DEBUG] Host=" + getConfig().getString("pointsdb.host") +
-                    " Port=" + getConfig().getInt("pointsdb.port") +
-                    " DB=" + getConfig().getString("pointsdb.database") +
-                    " User=" + getConfig().getString("pointsdb.user"));
             PointsService.init();
             getLogger().info("[JNR-DEBUG] PointsService erfolgreich initialisiert.");
         } catch (Exception e) {
             getLogger().severe("[JNR-ERROR] PointsService konnte nicht initialisiert werden!");
             e.printStackTrace();
-            getLogger().severe("[JNR-ERROR] Punktevergabe wird deaktiviert.");
         }
 
-        // Welten-Abgleich starten
-        getLogger().info("[JNR-DEBUG] Starte Welten-Abgleich zwischen DB und Server...");
+        // --- Welten-Abgleich nach Server-Start (verzögert, Multiverse-kompatibel) ---
         Bukkit.getScheduler().runTaskLater(this, () -> {
             try {
+                getLogger().info("[JNR-DEBUG] Starte Welten-Abgleich zwischen DB und Server...");
                 WorldSyncManager.syncWorlds();
             } catch (Exception e) {
                 getLogger().severe("[JNR-ERROR] Fehler beim Welten-Abgleich: " + e.getMessage());
@@ -80,10 +73,11 @@ public final class JumpAndRun extends JavaPlugin {
             }
         }, 20L * 5);
 
-        // Listener registrieren
+        // --- Listener registrieren ---
+        PluginManager pm = getServer().getPluginManager();
         pressurePlatesListener = new PressurePlateListener();
         fallDownListener = new FallDownListener();
-        PluginManager pm = getServer().getPluginManager();
+
         pm.registerEvents(pressurePlatesListener, this);
         pm.registerEvents(fallDownListener, this);
         pm.registerEvents(new TestRunAbortListener(), this);
@@ -96,10 +90,10 @@ public final class JumpAndRun extends JavaPlugin {
         pm.registerEvents(new LeaveItemListener(), this);
         pm.registerEvents(new BlockListener(), this);
 
-        // AliasPrompt aktivieren
+        // --- AliasPrompt aktivieren ---
         ch.ksrminecraft.jumpandrun.utils.AliasPromptManager.init();
 
-        // Command-Dispatcher
+        // --- Command-Dispatcher ---
         if (getCommand("jnr") != null) {
             getCommand("jnr").setExecutor((sender, cmd, label, args) -> {
                 if (args.length == 0) {
@@ -126,15 +120,17 @@ public final class JumpAndRun extends JavaPlugin {
             getLogger().severe("Befehl /jnr konnte nicht registriert werden (plugin.yml prüfen!)");
         }
 
-        // === Leader-Schilder beim Serverstart aktualisieren ===
-        try {
-            for (String worldName : ch.ksrminecraft.jumpandrun.db.WorldRepository.getPublishedWorlds()) {
-                ch.ksrminecraft.jumpandrun.utils.SignUpdater.updateLeaderSigns(worldName);
+        // --- Leader-Schilder beim Start aktualisieren ---
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            try {
+                for (String worldName : ch.ksrminecraft.jumpandrun.db.WorldRepository.getPublishedWorlds()) {
+                    ch.ksrminecraft.jumpandrun.utils.SignUpdater.updateLeaderSigns(worldName);
+                }
+                getLogger().info("[JNR] Alle Leader-Schilder beim Start aktualisiert.");
+            } catch (Exception e) {
+                getLogger().warning("[JNR] Fehler beim Aktualisieren der Leader-Schilder: " + e.getMessage());
             }
-            getLogger().info("[JNR] Alle Leader-Schilder beim Start aktualisiert.");
-        } catch (Exception e) {
-            getLogger().warning("[JNR] Fehler beim Aktualisieren der Leader-Schilder beim Start: " + e.getMessage());
-        }
+        }, 20L * 10);
 
         getLogger().info("JumpAndRun Plugin erfolgreich aktiviert.");
     }
@@ -144,6 +140,7 @@ public final class JumpAndRun extends JavaPlugin {
         getLogger().info("JumpAndRun Plugin heruntergefahren.");
     }
 
+    // --- Getter ---
     public static JumpAndRun getPlugin() { return plugin; }
     public static ConfigManager getConfigManager() { return configManager; }
     public PressurePlateListener getPressurePlatesListener() { return pressurePlatesListener; }

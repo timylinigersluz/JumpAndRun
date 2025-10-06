@@ -1,6 +1,7 @@
 package ch.ksrminecraft.jumpandrun.listeners;
 
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
+import ch.ksrminecraft.jumpandrun.utils.SignUpdater;
 import ch.ksrminecraft.jumpandrun.utils.TimeManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -67,6 +68,9 @@ public class WorldSwitchListener implements Listener {
                         + " nach " + newWorld + " → Herkunft gespeichert: "
                         + formatLocation(fromSpawn));
             }
+        }
+        if (WorldRepository.exists(newWorld)) {
+            SignUpdater.scanWorldForLeaderSigns(Bukkit.getWorld(newWorld));
         }
     }
 

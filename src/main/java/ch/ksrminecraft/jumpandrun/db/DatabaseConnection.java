@@ -23,7 +23,13 @@ public class DatabaseConnection {
      * Liefert eine offene DB-Verbindung zurück.
      */
     public static Connection getConnection() {
-        if (connection != null) return connection;
+        if (connection != null) {
+            try {
+                if (!connection.isClosed()) {
+                    return connection;
+                }
+            } catch (SQLException ignored) {}
+        }
 
         ConfigManager cfg = JumpAndRun.getConfigManager();
 
@@ -31,17 +37,26 @@ public class DatabaseConnection {
             if (cfg.isJnrDbEnabled()) {
                 // === MySQL ===
                 mysql = true;
-                String host = cfg.getJnrHost();
-                int port = cfg.getJnrPort();
-                String database = cfg.getJnrDatabase();
-                String user = cfg.getJnrUser();
-                String password = cfg.getJnrPassword();
 
-                String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&autoReconnect=true";
+                // Neue Struktur: Werte aus "mysql:"-Sektion lesen
+                String host = JumpAndRun.getPlugin().getConfig().getString("mysql.host", "localhost");
+                int port = JumpAndRun.getPlugin().getConfig().getInt("mysql.port", 3306);
+                String database = JumpAndRun.getPlugin().getConfig().getString("mysql.database", "jnr");
+                String user = JumpAndRun.getPlugin().getConfig().getString("mysql.user", "root");
+                String password = JumpAndRun.getPlugin().getConfig().getString("mysql.password", "");
 
-                log("[DEBUG] MySQL-Verbindung aufbauen: " + url + " User=" + user);
+                String url = "jdbc:mysql://" + host + ":" + port + "/" + database
+                        + "?useSSL=false&autoReconnect=true&allowPublicKeyRetrieval=true";
+
+                if (cfg.isDebug()) {
+                    log("[DEBUG] MySQL-Verbindung aufbauen: " + url + " User=" + user);
+                }
+
                 connection = DriverManager.getConnection(url, user, password);
-                log("MySQL-Verbindung erfolgreich hergestellt.");
+
+                if (cfg.isDebug()) {
+                    log("[DEBUG] MySQL-Verbindung erfolgreich hergestellt.");
+                }
             } else {
                 // === SQLite ===
                 mysql = false;
@@ -49,12 +64,20 @@ public class DatabaseConnection {
                 dbFile.getParentFile().mkdirs();
 
                 String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
-                log("[DEBUG] SQLite-Verbindung aufbauen: " + url);
+
+                if (cfg.isDebug()) {
+                    log("[DEBUG] SQLite-Verbindung aufbauen: " + url);
+                }
 
                 connection = DriverManager.getConnection(url);
-                log("SQLite-Verbindung erfolgreich hergestellt.");
+
+                if (cfg.isDebug()) {
+                    log("[DEBUG] SQLite-Verbindung erfolgreich hergestellt.");
+                }
             }
         } catch (SQLException e) {
+            log("§cFehler: Konnte keine Verbindung zur Datenbank herstellen!");
+            e.printStackTrace();
             throw new RuntimeException("Konnte keine Verbindung zur Datenbank herstellen", e);
         }
 
@@ -69,7 +92,7 @@ public class DatabaseConnection {
 
             // JumpAndRuns
             stmt.execute("CREATE TABLE IF NOT EXISTS JumpAndRuns (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT," + // AUTOINCREMENT = MySQL ignoriert Zusatz
+                    "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                     "worldName VARCHAR(100) NOT NULL UNIQUE," +
                     "alias VARCHAR(100) DEFAULT ''," +
                     "creator CHAR(36)," +
@@ -81,7 +104,7 @@ public class DatabaseConnection {
 
             // Laufzeiten
             stmt.execute("CREATE TABLE IF NOT EXISTS JumpAndRunTimes (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                     "jnrId INT NOT NULL," +
                     "playerUUID CHAR(36) NOT NULL," +
                     "time BIGINT NOT NULL," +
@@ -106,6 +129,8 @@ public class DatabaseConnection {
 
             log("Tabellen JumpAndRuns, JumpAndRunTimes, Checkpoints und ActiveRuns geprüft/erstellt.");
         } catch (SQLException e) {
+            log("§cFehler beim Initialisieren der Tabellen!");
+            e.printStackTrace();
             throw new RuntimeException("Fehler beim Initialisieren der Tabellen", e);
         }
     }
