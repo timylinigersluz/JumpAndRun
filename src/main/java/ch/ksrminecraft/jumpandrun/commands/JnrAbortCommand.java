@@ -27,6 +27,13 @@ public class JnrAbortCommand implements CommandExecutor {
 
         Player player = (Player) sender;
 
+        // --- Haupt-Permission prüfen ---
+        if (!player.hasPermission("jumpandrun.abort")) {
+            player.sendMessage(ChatColor.RED + "Du hast keine Berechtigung, JumpAndRun-Abbrüche durchzuführen.");
+            return true;
+        }
+
+        // --- Keine Option angegeben ---
         if (args.length < 2) {
             player.sendMessage(ChatColor.YELLOW + "❓ Möchtest du deine Welt behalten oder löschen?");
             player.sendMessage(ChatColor.GRAY + " → /jnr abort keepworld   " + ChatColor.DARK_GRAY + "(Welt als Draft behalten)");
@@ -38,27 +45,36 @@ public class JnrAbortCommand implements CommandExecutor {
         World currentWorld = player.getWorld();
         String worldName = currentWorld.getName();
 
-        // nur Draft-Welten dürfen abgebrochen werden
+        // --- Nur Draft-Welten dürfen abgebrochen werden ---
         if (WorldRepository.isPublished(worldName)) {
             player.sendMessage(ChatColor.RED + "Diese Welt ist bereits veröffentlicht und kann nicht mit /jnr abort abgebrochen werden.");
             return true;
         }
 
-        // Spieler zurück zur Lobby/Ursprungswelt
+        // --- Spieler zurück zur Lobby/Ursprungswelt ---
         Location origin = WorldSwitchListener.getOrigin(player);
         if (origin != null) {
             player.teleport(origin);
             WorldSwitchListener.clearOrigin(player);
         } else {
-            player.teleport(Bukkit.getWorld("world").getSpawnLocation());
+            World defaultWorld = Bukkit.getWorld("world");
+            if (defaultWorld != null) {
+                player.teleport(defaultWorld.getSpawnLocation());
+            }
         }
 
-        // Test ggf. beenden
+        // --- Falls der Spieler gerade testet ---
         if (TestRunManager.isTesting(player)) {
             TestRunManager.abortTest(player);
         }
 
+        // === Option: Welt löschen ===
         if (action.equals("deleteworld")) {
+            if (!player.hasPermission("jumpandrun.abort.deleteworld")) {
+                player.sendMessage(ChatColor.RED + "Du hast keine Berechtigung, Welten zu löschen.");
+                return true;
+            }
+
             // Welt deregistrieren (Multiverse) + entladen
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "mv remove " + worldName);
             boolean unloaded = Bukkit.unloadWorld(worldName, false);
@@ -72,16 +88,24 @@ public class JnrAbortCommand implements CommandExecutor {
                 Bukkit.getConsoleSender().sendMessage("[JNR-DB] Welt " + worldName + " aus der DB entfernt.");
             }
 
-            player.sendMessage(ChatColor.RED + "❌ Dein Testlauf wurde abgebrochen und die Welt " + worldName + " gelöscht.");
+            player.sendMessage(ChatColor.RED + "❌ Dein Testlauf wurde abgebrochen und die Welt §e" + worldName + ChatColor.RED + " gelöscht.");
+            Bukkit.getConsoleSender().sendMessage("[JNR] Spieler " + player.getName() + " hat seine Welt '" + worldName + "' gelöscht.");
             return true;
         }
 
+        // === Option: Welt behalten ===
         if (action.equals("keepworld")) {
-            player.sendMessage(ChatColor.GREEN + "✔ Dein Testlauf wurde abgebrochen. Die Welt " + worldName + " bleibt als Draft bestehen.");
-            Bukkit.getConsoleSender().sendMessage("[JNR] Spieler " + player.getName() + " hat seinen Test abgebrochen (Welt behalten).");
+            if (!player.hasPermission("jumpandrun.abort.keepworld")) {
+                player.sendMessage(ChatColor.RED + "Du hast keine Berechtigung, Welten als Draft zu behalten.");
+                return true;
+            }
+
+            player.sendMessage(ChatColor.GREEN + "✔ Dein Testlauf wurde abgebrochen. Die Welt §e" + worldName + ChatColor.GREEN + " bleibt als Draft bestehen.");
+            Bukkit.getConsoleSender().sendMessage("[JNR] Spieler " + player.getName() + " hat seinen Test abgebrochen (Welt behalten: " + worldName + ").");
             return true;
         }
 
+        // --- Ungültige Option ---
         player.sendMessage(ChatColor.RED + "Ungültige Option. Nutze /jnr abort <keepworld|deleteworld>");
         return true;
     }

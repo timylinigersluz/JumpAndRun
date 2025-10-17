@@ -8,6 +8,7 @@ import ch.ksrminecraft.jumpandrun.utils.PointsService;
 import ch.ksrminecraft.jumpandrun.utils.WorldSyncManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -45,6 +46,10 @@ public final class JumpAndRun extends JavaPlugin {
             getLogger().info("[JNR-DEBUG] Starte Initialisierung der JumpAndRun-DB ...");
             DatabaseConnection.initializeWorldTables();
             getLogger().info("[JNR-DEBUG] DB-Initialisierung abgeschlossen.");
+
+            // 🔹 Leader-Schilder aus DB laden
+            ch.ksrminecraft.jumpandrun.utils.SignUpdater.loadAllFromDatabase();
+            getLogger().info("[JNR-DEBUG] Leader-Schilder aus DB geladen.");
         } catch (RuntimeException e) {
             getLogger().severe("[JNR-ERROR] Konnte keine Verbindung zur JumpAndRun-DB aufbauen!");
             e.printStackTrace();
@@ -97,7 +102,7 @@ public final class JumpAndRun extends JavaPlugin {
         if (getCommand("jnr") != null) {
             getCommand("jnr").setExecutor((sender, cmd, label, args) -> {
                 if (args.length == 0) {
-                    sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort|name|unpublish>");
+                    sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort|name|unpublish|reload>");
                     return true;
                 }
                 switch (args[0].toLowerCase()) {
@@ -110,6 +115,7 @@ public final class JumpAndRun extends JavaPlugin {
                     case "abort":     return new JnrAbortCommand().onCommand(sender, cmd, label, args);
                     case "name":      return new JnrNameCommand().onCommand(sender, cmd, label, args);
                     case "unpublish": return new JnrUnpublishCommand().onCommand(sender, cmd, label, args);
+                    case "reload":    return new JnrReloadCommand().onCommand(sender, cmd, label, args);
                     default:
                         sender.sendMessage("§cUsage: /jnr <create|delete|teleport|list|ready|continue|abort|name|unpublish>");
                         return true;
@@ -120,17 +126,25 @@ public final class JumpAndRun extends JavaPlugin {
             getLogger().severe("Befehl /jnr konnte nicht registriert werden (plugin.yml prüfen!)");
         }
 
-        // --- Leader-Schilder beim Start aktualisieren ---
+        // --- Leader-Schilder beim Start synchronisieren & aktualisieren ---
         Bukkit.getScheduler().runTaskLater(this, () -> {
             try {
-                for (String worldName : ch.ksrminecraft.jumpandrun.db.WorldRepository.getPublishedWorlds()) {
-                    ch.ksrminecraft.jumpandrun.utils.SignUpdater.updateLeaderSigns(worldName);
+                getLogger().info("[JNR-DEBUG] Starte Leader-Sign-Sync...");
+
+                for (World world : Bukkit.getWorlds()) {
+                    // Nur Lobby + veröffentlichte JumpAndRuns
+                    if (world.getName().equalsIgnoreCase("world") ||
+                            ch.ksrminecraft.jumpandrun.db.WorldRepository.exists(world.getName())) {
+                        ch.ksrminecraft.jumpandrun.utils.SignUpdater.syncWorldSigns(world);
+                    }
                 }
-                getLogger().info("[JNR] Alle Leader-Schilder beim Start aktualisiert.");
+
+                getLogger().info("[JNR] Leader-Schilder synchronisiert und aktualisiert.");
             } catch (Exception e) {
-                getLogger().warning("[JNR] Fehler beim Aktualisieren der Leader-Schilder: " + e.getMessage());
+                getLogger().warning("[JNR] Fehler beim Leader-Sign-Sync: " + e.getMessage());
+                e.printStackTrace();
             }
-        }, 20L * 10);
+        }, 20L * 10); // 10 Sekunden nach Serverstart (Multiverse-kompatibel)
 
         getLogger().info("JumpAndRun Plugin erfolgreich aktiviert.");
     }
@@ -140,11 +154,12 @@ public final class JumpAndRun extends JavaPlugin {
         getLogger().info("JumpAndRun Plugin heruntergefahren.");
     }
 
-    // --- Getter ---
+    // --- Getter und Setter---
     public static JumpAndRun getPlugin() { return plugin; }
     public static ConfigManager getConfigManager() { return configManager; }
     public PressurePlateListener getPressurePlatesListener() { return pressurePlatesListener; }
     public FallDownListener getFallDownListener() { return fallDownListener; }
     public static Location getStartPosition() { return startPosition; }
     public static void setStartPosition(Location location) { startPosition = location; }
+    public static void setConfigManager(ConfigManager manager) {configManager = manager; }
 }

@@ -3,6 +3,7 @@ package ch.ksrminecraft.jumpandrun.utils;
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.TimeRepository;
 import ch.ksrminecraft.jumpandrun.db.RunRepository;
+import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -65,16 +66,32 @@ public class TimeManager {
         // Zeit in DB speichern
         TimeRepository.inputTime(world, endPlayer, completionTime);
 
-        // Leader/Bestzeit prüfen
+        // Aktuelle Bestzeit abfragen
         Long bestTime = TimeRepository.getBestTime(world.getName());
-        if (bestTime == null || completionTime < bestTime) {
-            SignUpdater.updateLeaderSigns(world.getName());
+        boolean newRecord = (bestTime == null || completionTime < bestTime);
+
+        if (newRecord) {
+            // 🔹 Alias anhand der Welt ermitteln
+            String alias = WorldRepository.getAlias(world.getName());
+            if (alias != null && !alias.isEmpty()) {
+                SignUpdater.updateLeaderSigns(alias); // ✅ jetzt alias-basiert
+                if (JumpAndRun.getConfigManager().isDebug()) {
+                    Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Leader-Schilder für Alias '" + alias + "' aktualisiert.");
+                }
+            } else {
+                if (JumpAndRun.getConfigManager().isDebug()) {
+                    Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Kein Alias für Welt " + world.getName() + " gefunden, Leader-Signs nicht aktualisiert.");
+                }
+            }
+
+            // Punkte für neuen Rekord vergeben
             PointsService.awardRecordPoints(endPlayer);
 
             if (JumpAndRun.getConfigManager().isDebug()) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Neuer Leader: "
-                        + endPlayer.getName() + " in Welt " + world.getName()
-                        + " mit " + TimeRepository.formatTime(completionTime));
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Neuer Rekord: "
+                        + endPlayer.getName() + " (" + TimeRepository.formatTime(completionTime)
+                        + ") in Welt=" + world.getName()
+                        + (alias != null ? " (Alias=" + alias + ")" : ""));
             }
         }
 
@@ -103,7 +120,7 @@ public class TimeManager {
     }
 
     public static void stopStopWatch(Player player) {
-        stopWatch(player); // private Logik hier aufrufen
+        stopWatch(player);
     }
 
     /**

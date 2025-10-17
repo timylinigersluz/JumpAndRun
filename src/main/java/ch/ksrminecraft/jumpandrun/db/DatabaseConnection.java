@@ -127,7 +127,15 @@ public class DatabaseConnection {
                     "PRIMARY KEY (jnrId, playerUUID)," +
                     "FOREIGN KEY (jnrId) REFERENCES JumpAndRuns(id) ON DELETE CASCADE)");
 
-            log("Tabellen JumpAndRuns, JumpAndRunTimes, Checkpoints und ActiveRuns geprüft/erstellt.");
+            stmt.execute("CREATE TABLE IF NOT EXISTS JumpAndRunLeaderSigns (" +
+                    "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
+                    "worldName VARCHAR(100) NOT NULL," +
+                    "x INT NOT NULL," +
+                    "y INT NOT NULL," +
+                    "z INT NOT NULL," +
+                    "UNIQUE(worldName, x, y, z))");
+
+            log("Tabellen JumpAndRuns, JumpAndRunTimes, Checkpoints, ActiveRuns und JumpAndRunLeaderSigns geprüft/erstellt.");
         } catch (SQLException e) {
             log("§cFehler beim Initialisieren der Tabellen!");
             e.printStackTrace();

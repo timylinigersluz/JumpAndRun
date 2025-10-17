@@ -45,6 +45,14 @@ permissions:
     description: Erlaubt das Abbrechen eines Testlaufs (mit Option Welt behalten oder löschen)
     default: op
 
+  jumpandrun.abort.keepworld:
+    description: Erlaubt den Abbruch eines Tests, ohne die Welt zu löschen (/jnr abort keepworld)
+    default: true
+
+  jumpandrun.abort.deleteworld:
+    description: Erlaubt das Löschen der Welt bei Abbruch (/jnr abort deleteworld)
+    default: op
+
   jumpandrun.unpublish:
     description: Setzt eine veröffentlichte Welt zurück in den Draft-Modus
     default: op
@@ -63,4 +71,8 @@ permissions:
 
   jumpandrun.name:
     description: Erlaubt das Setzen eines Alias-Namens für die JumpAndRun-Welt
+    default: op
+
+  jumpandrun.reload:
+    description: Erlaubt das Neuladen der Config und das Aktualisieren aller Leader-Schilder
     default: op

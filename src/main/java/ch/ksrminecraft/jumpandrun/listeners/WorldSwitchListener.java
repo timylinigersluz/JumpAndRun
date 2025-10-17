@@ -35,58 +35,49 @@ public class WorldSwitchListener implements Listener {
         String newWorld = player.getWorld().getName();
         String oldWorld = event.getFrom().getName();
 
-        // === Alte Welt verlassen ===
+        // --- Alte Welt verlassen ---
         if (WorldRepository.exists(oldWorld) && !WorldRepository.exists(newWorld)) {
-            // Spieler verlässt eine JnR-Welt -> StopWatch stoppen
             TimeManager.stopWatch(player);
 
-            // Inventar leeren (außer Alias-Spezialfall)
             if (!skipClear.getOrDefault(player.getUniqueId(), false)) {
                 player.getInventory().clear();
                 player.updateInventory();
             } else {
-                skipClear.remove(player.getUniqueId()); // nur 1x überspringen
+                skipClear.remove(player.getUniqueId());
             }
 
-            if (Bukkit.getConsoleSender() != null) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch von "
-                        + player.getName() + " beim Verlassen der Welt " + oldWorld + " gestoppt.");
-            }
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch von "
+                    + player.getName() + " beim Verlassen der Welt " + oldWorld + " gestoppt.");
         }
 
-        // === Neue Welt betreten ===
+        // --- Neue Welt betreten ---
         if (WorldRepository.exists(newWorld)) {
             Location fromSpawn = event.getFrom().getSpawnLocation();
             originLocations.put(player.getUniqueId(), fromSpawn.clone());
 
-            // Inventar leeren und Aufgeben-Item setzen
             giveLeaveItem(player);
 
-            if (Bukkit.getConsoleSender() != null) {
-                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
-                        + " wechselt von " + oldWorld
-                        + " nach " + newWorld + " → Herkunft gespeichert: "
-                        + formatLocation(fromSpawn));
-            }
-        }
-        if (WorldRepository.exists(newWorld)) {
-            SignUpdater.scanWorldForLeaderSigns(Bukkit.getWorld(newWorld));
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
+                    + " wechselt von " + oldWorld
+                    + " nach " + newWorld + " → Herkunft gespeichert: "
+                    + formatLocation(fromSpawn));
+
+            // 🔹 Nach kurzer Verzögerung Schilder aus DB laden & aktualisieren
+            Bukkit.getScheduler().runTaskLater(ch.ksrminecraft.jumpandrun.JumpAndRun.getPlugin(), () -> {
+                SignUpdater.loadAllFromDatabase();                 // Cache aktualisieren
+                SignUpdater.updateLeaderSigns(newWorld);           // Schilder dieser Welt neu zeichnen
+            }, 40L); // 2 Sekunden Delay – Welt vollständig geladen
         }
     }
 
-    /** Herkunft explizit setzen (z. B. aus Commands heraus). */
     public static void setOrigin(Player player, Location loc) {
-        if (loc != null) {
-            originLocations.put(player.getUniqueId(), loc.clone());
-        }
+        if (loc != null) originLocations.put(player.getUniqueId(), loc.clone());
     }
 
-    /** Holt die gespeicherte Herkunfts-Location für einen Spieler. */
     public static Location getOrigin(Player player) {
         return originLocations.get(player.getUniqueId());
     }
 
-    /** Entfernt gespeicherte Herkunft (z. B. nach Teleport zurück). */
     public static void clearOrigin(Player player) {
         originLocations.remove(player.getUniqueId());
     }
@@ -97,7 +88,6 @@ public class WorldSwitchListener implements Listener {
                 loc.getX(), loc.getY(), loc.getZ());
     }
 
-    /** Gibt dem Spieler ein "Aufgeben"-Item in den letzten Hotbar-Slot. */
     private void giveLeaveItem(Player player) {
         player.getInventory().clear();
 
@@ -108,11 +98,10 @@ public class WorldSwitchListener implements Listener {
             leaveItem.setItemMeta(meta);
         }
 
-        player.getInventory().setItem(8, leaveItem); // Slot 8 = letzter Hotbar-Slot
+        player.getInventory().setItem(8, leaveItem);
         player.updateInventory();
     }
 
-    /** Spezialfall aus AliasPromptManager: Inventar-Clear überspringen */
     public static void markSkipClear(Player player) {
         skipClear.put(player.getUniqueId(), true);
     }

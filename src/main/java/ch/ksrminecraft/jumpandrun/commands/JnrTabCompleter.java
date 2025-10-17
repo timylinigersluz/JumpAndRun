@@ -16,7 +16,7 @@ import java.util.List;
 public class JnrTabCompleter implements TabCompleter {
 
     private static final List<String> SUBCOMMANDS = Arrays.asList(
-            "create", "delete", "teleport", "list", "ready", "continue", "abort", "name", "unpublish"
+            "create", "delete", "teleport", "list", "ready", "continue", "abort", "name", "unpublish", "reload"
     );
 
     @Override

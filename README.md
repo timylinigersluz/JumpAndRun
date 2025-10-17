@@ -79,6 +79,8 @@ Es enthält ein **Checkpoint-System**, **Schilder für Teleport & Leaderboards**
 - `jumpandrun.ready` → Testmodus starten.
 - `jumpandrun.continue` → Draft-Welten fortsetzen.
 - `jumpandrun.abort` → Testläufe abbrechen.
+- `jumpandrun.abort.keepworld` → Testlauf abbrechen, Welt behalten.
+- `jumpandrun.abort.deleteworld` → Testlauf abbrechen, Welt löschen.
 - `jumpandrun.unpublish` → Welt wieder auf Draft setzen.
 - `jumpandrun.sign.create` → Schilder platzieren ([JNR], [JNR-LEADER]).
 - `jumpandrun.sign.use` → Start-Schilder benutzen.
@@ -118,18 +120,16 @@ Es enthält ein **Checkpoint-System**, **Schilder für Teleport & Leaderboards**
 ```yaml
 debug: true
 
-# JumpAndRun-DB (MySQL/SQLite)
 jumpandrun:
-  enabled: true    # true = MySQL, false = SQLite
+  enabled: true
   host: localhost
   port: 3306
   database: jnr
   user: root
   password: geheim
 
-# Punkte-DB für RankPointsAPI (MySQL)
 pointsdb:
-  enabled: false   # falls false → Punktevergabe deaktiviert
+  enabled: false
   host: localhost
   port: 3306
   database: rankpoints
@@ -137,20 +137,16 @@ pointsdb:
   password: anderespasswort
   excludeStaff: true
 
-# Druckplatten
 plates:
   start: HEAVY_WEIGHTED_PRESSURE_PLATE
   end: LIGHT_WEIGHTED_PRESSURE_PLATE
   checkpoint: STONE_PRESSURE_PLATE
 
-# Punkte für neue Rekorde
 points:
   new-record: 10
 
-# Fallback-Welt (z. B. Lobby)
 fallback-world: world
 
-# Spieler (intern, nicht verändern)
 players: {}
 ```
 

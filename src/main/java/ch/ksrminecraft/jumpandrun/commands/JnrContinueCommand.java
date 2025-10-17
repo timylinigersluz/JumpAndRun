@@ -3,11 +3,9 @@ package ch.ksrminecraft.jumpandrun.commands;
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.listeners.WorldSwitchListener;
+import ch.ksrminecraft.jumpandrun.utils.ItemKitManager;
 import ch.ksrminecraft.jumpandrun.utils.WorldUtils;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.WorldType;
+import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -61,22 +59,31 @@ public class JnrContinueCommand implements CommandExecutor {
             return true;
         }
 
-        // Herkunft speichern (Lobby)
+        // Herkunft (Lobby) merken
         WorldSwitchListener.setOrigin(player, player.getLocation());
 
         // Startposition aus DB
         Location start = WorldRepository.getStartLocation(worldName);
-        if (start == null) {
-            start = world.getSpawnLocation();
-        }
+        if (start == null) start = world.getSpawnLocation();
 
         // Teleport in Mitte der Startinsel
         Location tpLoc = start.clone().add(0, JumpAndRun.height + 1, 0);
-        Location goal = new Location(world, start.getX() + 20, start.getY(), start.getZ()); // grob Zielinsel
+        Location goal = new Location(world, start.getX() + 20, start.getY(), start.getZ());
         tpLoc.setDirection(goal.toVector().subtract(tpLoc.toVector()));
 
+        // Teleport + Vorbereitung
         player.teleport(tpLoc);
+        player.setGameMode(GameMode.CREATIVE);
+
+        // Standard-Bauset
+        ItemKitManager.giveBuildKit(player);
+
+        // Effekte & Meldung
+        player.playSound(tpLoc, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f);
+        player.spawnParticle(Particle.CLOUD, tpLoc, 30, 0.3, 0.3, 0.3, 0.01);
+
         player.sendMessage(ChatColor.GREEN + "✔ Du bist wieder in deiner JumpAndRun-Welt §e" + worldName + "§a.");
+        player.sendMessage(ChatColor.GRAY + "Du kannst weiterbauen oder mit §e/jnr ready §7veröffentlichen.");
 
         return true;
     }
