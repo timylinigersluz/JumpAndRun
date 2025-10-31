@@ -35,8 +35,6 @@ import java.util.UUID;
 public class PressurePlateListener implements Listener {
 
     private static final Map<UUID, Location> lastCheckpoints = new HashMap<>();
-
-    // Cooldown-Speicher: (Spieler+Block) → Zeitstempel
     private static final Map<String, Long> plateCooldowns = new HashMap<>();
     private static final long COOLDOWN_MS = 3000; // 3 Sekunden Cooldown
 
@@ -67,7 +65,7 @@ public class PressurePlateListener implements Listener {
         Material endPlate = JumpAndRun.getConfigManager().getEndPlate();
         Material checkpointPlate = JumpAndRun.getConfigManager().getCheckpointPlate();
 
-        // Startdruckplatte
+        // === Startdruckplatte ===
         if (blockType == startPlate) {
             if (TestRunManager.isPrepared(player)) {
                 PlayerUtils.resetState(player);
@@ -84,7 +82,7 @@ public class PressurePlateListener implements Listener {
             }
         }
 
-        // Checkpoint
+        // === Checkpoint ===
         else if (blockType == checkpointPlate) {
             Location cp = clickedBlock.getLocation();
             lastCheckpoints.put(player.getUniqueId(), cp);
@@ -98,10 +96,10 @@ public class PressurePlateListener implements Listener {
             debug(player.getName() + " hat einen Checkpoint in Welt " + worldName + " erreicht.");
         }
 
-        // Zieldruckplatte
+        // === Zieldruckplatte ===
         else if (blockType == endPlate) {
+            // --- Testmodus ---
             if (TestRunManager.isTesting(player) && !WorldRepository.isPublished(worldName)) {
-                // === READY-TESTRUN (nur wenn Welt noch nicht veröffentlicht ist) ===
                 long duration = TimeManager.calcTime(clickedBlock.getWorld(), player);
                 TestRunManager.completeTest(player);
 
@@ -110,56 +108,53 @@ public class PressurePlateListener implements Listener {
                 ch.ksrminecraft.jumpandrun.utils.AliasPromptManager.awaitAliasInput(player, worldName);
 
                 debug("Funktionstest abgeschlossen (Spieler=" + player.getName() + ", Dauer=" + duration + "ms).");
+                return;
+            }
 
-            } else if (WorldRepository.isPublished(worldName)) {
-                // === NORMALER MODUS ===
+            // --- Nur bei veröffentlichten Welten ---
+            if (WorldRepository.isPublished(worldName)) {
                 long duration = TimeManager.calcTime(clickedBlock.getWorld(), player);
-
                 teleportBack(player, worldName);
 
+                // 🟢 Lauf nur anhand der Dauer bewerten (ohne hasActiveRun-Check)
                 if (duration > 0) {
                     player.sendMessage(ChatColor.GREEN + "✔ Lauf beendet in " + TimeRepository.formatTime(duration));
-
                     Long bestTime = TimeRepository.getBestTime(worldName);
 
                     if (bestTime == null) {
-                        // Erster Lauf = automatisch Rekord
                         player.sendMessage(ChatColor.GOLD + "🏆 Erster Rekord!");
-
-                        Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
-                            SignUpdater.updateLeaderSigns(worldName);
-                        }, 1L);
-
+                        Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(),
+                                () -> SignUpdater.updateLeaderSigns(worldName), 1L);
                         triggerCelebration(player);
                         PointsService.awardRecordPoints(player);
-                        debug("Erster Rekord in Welt " + worldName + ": " + duration + "ms (Spieler=" + player.getName() + ")");
+                        debug("Erster Rekord in Welt " + worldName + ": " + duration + "ms (" + player.getName() + ")");
                     } else if (duration <= bestTime) {
-                        // Neuer Rekord
                         player.sendMessage(ChatColor.GOLD + "🏆 Neuer Rekord!");
-
-                        Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
-                            SignUpdater.updateLeaderSigns(worldName);
-                        }, 1L);
-
+                        Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(),
+                                () -> SignUpdater.updateLeaderSigns(worldName), 1L);
                         triggerCelebration(player);
                         PointsService.awardRecordPoints(player);
-                        debug("Neuer Rekord in Welt " + worldName + ": " + duration + "ms (Spieler=" + player.getName() + ")");
+                        debug("Neuer Rekord in Welt " + worldName + ": " + duration + "ms (" + player.getName() + ")");
                     } else {
-                        debug("Kein Rekord: Spieler=" + player.getName()
-                                + ", Zeit=" + duration + "ms, Beste=" + bestTime + "ms");
+                        debug("Kein Rekord: " + player.getName() + " → " + duration + "ms (Beste=" + bestTime + ")");
                     }
                 } else {
-                    player.sendMessage(ChatColor.RED + "Fehler: Keine Startzeit gefunden.");
+                    // Keine Startzeit gefunden → keine Chat-Meldung, nur Debug
+                    if (JumpAndRun.getConfigManager().isDebug()) {
+                        Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Zielplatte ohne Startzeit: Spieler="
+                                + player.getName() + ", Welt=" + worldName);
+                    }
                 }
 
                 debug(player.getName() + " hat die Zieldruckplatte in Welt " + worldName
                         + " betreten (Dauer=" + duration + "ms).");
-
             } else {
                 player.sendMessage(ChatColor.RED + "Dieses JumpAndRun ist noch nicht veröffentlicht.");
             }
         }
     }
+
+    // === Hilfsmethoden ===
 
     private void teleportBack(Player player, String worldName) {
         Location origin = WorldSwitchListener.getOrigin(player);
@@ -198,25 +193,19 @@ public class PressurePlateListener implements Listener {
         }
     }
 
-    /**
-     * Feuerwerk-Serie bei Rekord
-     */
+    /** Feuerwerk-Serie bei Rekord */
     private void triggerCelebration(Player player) {
         for (int i = 0; i < 3; i++) {
-            int delay = 20 * i; // alle 20 Ticks (=1 Sekunde)
-            Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
-                spawnCelebrationFirework(player.getLocation());
-            }, delay);
+            int delay = 20 * i;
+            Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(),
+                    () -> spawnCelebrationFirework(player.getLocation()), delay);
         }
     }
 
-    /**
-     * Großes Feuerwerk für Rekorde
-     */
+    /** Großes Feuerwerk für Rekorde */
     private void spawnCelebrationFirework(Location loc) {
         Firework firework = loc.getWorld().spawn(loc, Firework.class);
         FireworkMeta meta = firework.getFireworkMeta();
-
         meta.addEffect(FireworkEffect.builder()
                 .with(FireworkEffect.Type.BALL_LARGE)
                 .withColor(Color.AQUA, Color.LIME, Color.YELLOW)
@@ -225,10 +214,10 @@ public class PressurePlateListener implements Listener {
                 .flicker(true)
                 .build());
         meta.setPower(1);
-
         firework.setFireworkMeta(meta);
 
-        // Sofort explodieren lassen
+        // 🔹 Kein Schaden durch Feuerwerk
+        ch.ksrminecraft.jumpandrun.listeners.FireworkNoDamageListener.markNoDamage(firework);
         Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), firework::detonate, 1L);
     }
 }

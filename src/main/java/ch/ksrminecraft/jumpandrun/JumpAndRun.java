@@ -94,6 +94,10 @@ public final class JumpAndRun extends JavaPlugin {
         pm.registerEvents(new DeathListener(), this);
         pm.registerEvents(new LeaveItemListener(), this);
         pm.registerEvents(new BlockListener(), this);
+        pm.registerEvents(new BarrierProtectionListener(), this);
+        pm.registerEvents(new FireworkNoDamageListener(), this);
+        pm.registerEvents(new JoinRedirectListener(), this);
+        pm.registerEvents(new AdvancementBlockListener(), this);
 
         // --- AliasPrompt aktivieren ---
         ch.ksrminecraft.jumpandrun.utils.AliasPromptManager.init();

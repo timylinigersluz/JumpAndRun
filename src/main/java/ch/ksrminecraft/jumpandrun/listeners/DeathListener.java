@@ -4,13 +4,17 @@ import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
 
+/**
+ * Meldet den Tod eines Spielers in einer JumpAndRun-Welt,
+ * ohne den Run abzubrechen. Der Spieler wird beim Respawn
+ * automatisch zum letzten Checkpoint (oder Startpunkt)
+ * teleportiert, und die Zeit läuft weiter.
+ */
 public class DeathListener implements Listener {
 
     @EventHandler
@@ -18,35 +22,22 @@ public class DeathListener implements Listener {
         Player player = event.getEntity();
         String worldName = player.getWorld().getName();
 
-        // Nur reagieren, wenn Spieler in einer JnR-Welt ist
-        if (!WorldRepository.exists(worldName)) return;
+        // Nur reagieren, wenn es sich um eine JumpAndRun-Welt handelt (auch Drafts)
+        boolean isJumpAndRunWorld =
+                worldName.toLowerCase().startsWith("jnr_") || WorldRepository.exists(worldName);
 
-        if (JumpAndRun.getConfigManager().isDebug()) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName() +
-                    " ist in Welt " + worldName + " gestorben → Run wird abgebrochen, Spieler wird ausgeloggt.");
+        if (!isJumpAndRunWorld) {
+            return;
         }
 
-        // Nachricht an Spieler
-        player.sendMessage(ChatColor.RED + "Du bist gestorben. Dein Run wurde abgebrochen. "
-                + "Starte einen neuen Versuch über das Start-Schild.");
-    }
+        // Nur Hinweis an den Spieler – kein Abbruch, keine Zeitunterbrechung
+        player.sendMessage(ChatColor.YELLOW + "Du bist gestorben! "
+                + ChatColor.GRAY + "Du wirst zu deinem letzten Checkpoint zurückgesetzt.");
 
-    @EventHandler
-    public void onPlayerRespawn(PlayerRespawnEvent event) {
-        Player player = event.getPlayer();
-        String worldName = player.getWorld().getName();
-
-        // Nur reagieren, wenn Spieler in einer JnR-Welt war
-        if (!WorldRepository.exists(worldName)) return;
-
-        // Spieler nach Respawn in die Lobby / Origin teleportieren
-        String fallbackWorldName = JumpAndRun.getConfigManager().getFallbackWorld();
-        World fallbackWorld = Bukkit.getWorld(fallbackWorldName);
-        if (fallbackWorld != null) {
-            event.setRespawnLocation(fallbackWorld.getSpawnLocation());
-            player.sendMessage(ChatColor.AQUA + "Du wurdest nach deinem Tod in die Lobby zurückgebracht.");
-        } else {
-            player.sendMessage(ChatColor.RED + "Fehler: Keine Fallback-Welt gefunden!");
+        if (JumpAndRun.getConfigManager().isDebug()) {
+            Bukkit.getConsoleSender().sendMessage(
+                    "[JNR-DEBUG] Spieler " + player.getName() +
+                            " ist in Welt " + worldName + " gestorben → Respawn ohne Abbruch, Zeit läuft weiter.");
         }
     }
 }

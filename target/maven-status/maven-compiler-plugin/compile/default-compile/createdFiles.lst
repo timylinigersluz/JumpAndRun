@@ -14,6 +14,7 @@ ch\ksrminecraft\jumpandrun\commands\JnrUnpublishCommand.class
 ch\ksrminecraft\jumpandrun\JumpAndRun.class
 ch\ksrminecraft\jumpandrun\listeners\BlockListener.class
 ch\ksrminecraft\jumpandrun\listeners\SignListener.class
+ch\ksrminecraft\jumpandrun\listeners\BarrierProtectionListener.class
 ch\ksrminecraft\jumpandrun\commands\JnrReadyCommand.class
 ch\ksrminecraft\jumpandrun\db\TimeRepository.class
 ch\ksrminecraft\jumpandrun\listeners\CheckpointCleanupListener.class
@@ -25,6 +26,8 @@ ch\ksrminecraft\jumpandrun\utils\WorldSyncManager.class
 ch\ksrminecraft\jumpandrun\commands\JnrAbortCommand.class
 ch\ksrminecraft\jumpandrun\utils\TimeUtils.class
 ch\ksrminecraft\jumpandrun\db\WorldRepository.class
+ch\ksrminecraft\jumpandrun\listeners\AdvancementBlockListener.class
+ch\ksrminecraft\jumpandrun\listeners\JoinRedirectListener.class
 ch\ksrminecraft\jumpandrun\commands\JnrCreateCommand.class
 ch\ksrminecraft\jumpandrun\db\LeaderSignRepository.class
 ch\ksrminecraft\jumpandrun\listeners\WorldLockListener.class
@@ -35,6 +38,7 @@ ch\ksrminecraft\jumpandrun\commands\JnrTeleportCommand.class
 ch\ksrminecraft\jumpandrun\utils\PointsService.class
 ch\ksrminecraft\jumpandrun\listeners\FallDownListener.class
 ch\ksrminecraft\jumpandrun\listeners\DeathListener.class
+ch\ksrminecraft\jumpandrun\listeners\FireworkNoDamageListener.class
 ch\ksrminecraft\jumpandrun\models\JnRWorld.class
 ch\ksrminecraft\jumpandrun\listeners\LeaveItemListener.class
 ch\ksrminecraft\jumpandrun\listeners\CheckpointRespawnListener.class

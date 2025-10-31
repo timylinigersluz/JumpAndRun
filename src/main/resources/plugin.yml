@@ -57,17 +57,9 @@ permissions:
     description: Setzt eine veröffentlichte Welt zurück in den Draft-Modus
     default: op
 
-  jumpandrun.sign.create:
-    description: Erlaubt das Erstellen von JumpAndRun-Schildern ([JNR], [JNR-LEADER])
+  jumpandrun.sign.interact:
+    description: Erlaubt das Erstellen, Bearbeiten und Löschen von JumpAndRun-Schildern ([JNR], [JNR-LEADER])
     default: op
-
-  jumpandrun.sign.use:
-    description: Erlaubt das Benutzen von JumpAndRun-Schildern
-    default: true
-
-  jumpandrun.sign.leader:
-    description: Erlaubt das Erstellen und Nutzen von Leader-Schildern
-    default: true
 
   jumpandrun.name:
     description: Erlaubt das Setzen eines Alias-Namens für die JumpAndRun-Welt

@@ -5,72 +5,71 @@ import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.utils.PlayerUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 
 /**
- * Listener, der Spieler nach einem Tod zum letzten Checkpoint
- * (oder zum Startpunkt) zurücksetzt, ohne den Timer zurückzusetzen.
- * Nur für echte JumpAndRun-Welten (DB geprüft).
- * Reset von Health, Hunger und Sättigung für faire Bedingungen.
+ * Stellt sicher, dass Spieler nach einem Tod in einer JumpAndRun-Welt
+ * (auch Drafts oder KeepWorlds) immer in derselben Welt respawnen –
+ * am letzten Checkpoint oder am Startpunkt.
  */
 public class CheckpointRespawnListener implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
-        String worldName = player.getWorld().getName();
+        World world = player.getWorld();
+        String worldName = world.getName();
 
-        // Nur reagieren, wenn es eine registrierte JnR-Welt ist
-        if (!WorldRepository.exists(worldName)) {
-            if (JumpAndRun.getConfigManager().isDebug()) {
-                Bukkit.getConsoleSender().sendMessage(
-                        "[JNR-DEBUG] Spieler " + player.getName() +
-                                " ist in Welt " + worldName +
-                                " gestorben (keine JnR-Welt → kein Respawn-Handling)."
-                );
-            }
+        // 🟡 Nur reagieren, wenn Welt eine JumpAndRun-Welt ist (Name oder DB-Eintrag)
+        boolean isJumpAndRunWorld =
+                worldName.toLowerCase().startsWith("jnr_") || WorldRepository.exists(worldName);
+
+        if (!isJumpAndRunWorld) {
+            // Normale Welten ignorieren (z. B. Lobby, Bedwars etc.)
             return;
         }
 
-        // Ziel bestimmen: Checkpoint oder Start
+        // Ziel bestimmen: Checkpoint oder Startpunkt
         Location checkpoint = PressurePlateListener.getLastCheckpoint(player);
-        Location target = (checkpoint != null)
-                ? checkpoint.clone().add(0, 1, 0)
-                : WorldRepository.getStartLocation(worldName) != null
-                ? WorldRepository.getStartLocation(worldName).clone().add(0, 1, 0)
-                : null;
+        Location target = null;
 
-        if (target == null) {
-            if (JumpAndRun.getConfigManager().isDebug()) {
-                Bukkit.getConsoleSender().sendMessage(
-                        "[JNR-DEBUG] Keine Respawn-Location für Spieler " +
-                                player.getName() + " in Welt " + worldName + " gefunden."
-                );
+        if (checkpoint != null) {
+            target = checkpoint.clone().add(0, 1, 0);
+        } else {
+            Location start = WorldRepository.getStartLocation(worldName);
+            if (start != null) {
+                target = start.clone().add(0, 1, 0);
+            } else {
+                // Wenn Welt keine gespeicherten Punkte hat, fallback = Weltspawn
+                target = world.getSpawnLocation().clone().add(0, 1, 0);
             }
-            return;
         }
 
-        // Respawn muss 1 Tick delayed passieren
         Location finalTarget = target;
+
+        // 1 Tick delay, um Vanilla-Respawn abzuschliessen
         Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
             if (!player.isOnline()) return;
-            if (!player.getWorld().getName().equals(worldName)) return;
 
-            // Spielerzustände resetten (Health, Hunger, Saturation, FallDamage)
+            // 🟢 Garantieren, dass der Spieler in derselben Welt bleibt
+            if (!player.getWorld().equals(world)) {
+                player.teleport(finalTarget);
+            }
+
+            // Spieler zurücksetzen (Health, Hunger, Velocity)
             PlayerUtils.resetState(player);
-
-            // Teleport
             player.teleport(finalTarget);
             player.sendMessage("§eDu wurdest zu deinem letzten Checkpoint zurückgesetzt.");
 
             if (JumpAndRun.getConfigManager().isDebug()) {
                 Bukkit.getConsoleSender().sendMessage(
-                        "[JNR-DEBUG] Spieler " + player.getName() +
-                                " wurde nach Tod zu " + formatLocation(finalTarget) +
-                                " teleportiert (ActiveRun bleibt bestehen, Timer läuft weiter)."
+                        "[JNR-DEBUG] Respawn: " + player.getName() +
+                                " → " + formatLocation(finalTarget)
+                                + " (Welt: " + worldName + ")"
                 );
             }
         }, 1L);
@@ -79,7 +78,6 @@ public class CheckpointRespawnListener implements Listener {
     private String formatLocation(Location loc) {
         return String.format("(%s | x=%.1f, y=%.1f, z=%.1f)",
                 loc.getWorld() != null ? loc.getWorld().getName() : "null",
-                loc.getX(), loc.getY(), loc.getZ()
-        );
+                loc.getX(), loc.getY(), loc.getZ());
     }
 }

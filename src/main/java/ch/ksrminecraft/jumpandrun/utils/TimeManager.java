@@ -20,35 +20,21 @@ public class TimeManager {
 
     private static final Map<UUID, StopWatch> stopWatches = new HashMap<>();
 
-    /**
-     * Startet einen neuen Run für den Spieler.
-     * - merkt sich die Startzeit in der RunRepository
-     * - startet eine persönliche StopWatch im ActionBar
-     */
+    /** Startet einen neuen Run für den Spieler. */
     public static void inputStartTime(World world, Player player) {
         RunRepository.inputStartTime(world, player);
-
-        // ggf. alte StopWatch stoppen, damit keine doppelt läuft
-        stopWatch(player);
-
+        stopWatch(player); // alte stoppen
         StopWatch sw = new StopWatch(player);
         sw.start();
         stopWatches.put(player.getUniqueId(), sw);
 
         if (JumpAndRun.getConfigManager().isDebug()) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Startzeit gesetzt: "
-                    + "Spieler=" + player.getName() + ", Welt=" + world.getName()
-                    + " (StopWatch gestartet)");
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Startzeit gesetzt: Spieler=" + player.getName()
+                    + ", Welt=" + world.getName() + " (StopWatch gestartet)");
         }
     }
 
-    /**
-     * Berechnet die Endzeit eines Runs und speichert sie in der DB.
-     * - stoppt die StopWatch
-     * - aktualisiert Leaderboard und Punkte
-     *
-     * @return Dauer in Millisekunden oder -1 wenn keine Startzeit gefunden wurde
-     */
+    /** Berechnet die Endzeit eines Runs und speichert sie in der DB. */
     public static long calcTime(World world, Player endPlayer) {
         Long startTime = RunRepository.getStartTime(world, endPlayer);
 
@@ -62,71 +48,52 @@ public class TimeManager {
         }
 
         long completionTime = System.currentTimeMillis() - startTime;
-
-        // Zeit in DB speichern
         TimeRepository.inputTime(world, endPlayer, completionTime);
 
-        // Aktuelle Bestzeit abfragen
         Long bestTime = TimeRepository.getBestTime(world.getName());
         boolean newRecord = (bestTime == null || completionTime < bestTime);
 
         if (newRecord) {
-            // 🔹 Alias anhand der Welt ermitteln
             String alias = WorldRepository.getAlias(world.getName());
             if (alias != null && !alias.isEmpty()) {
-                SignUpdater.updateLeaderSigns(alias); // ✅ jetzt alias-basiert
-                if (JumpAndRun.getConfigManager().isDebug()) {
+                SignUpdater.updateLeaderSigns(alias);
+                if (JumpAndRun.getConfigManager().isDebug())
                     Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Leader-Schilder für Alias '" + alias + "' aktualisiert.");
-                }
-            } else {
-                if (JumpAndRun.getConfigManager().isDebug()) {
-                    Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Kein Alias für Welt " + world.getName() + " gefunden, Leader-Signs nicht aktualisiert.");
-                }
             }
-
-            // Punkte für neuen Rekord vergeben
             PointsService.awardRecordPoints(endPlayer);
-
-            if (JumpAndRun.getConfigManager().isDebug()) {
+            if (JumpAndRun.getConfigManager().isDebug())
                 Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Neuer Rekord: "
                         + endPlayer.getName() + " (" + TimeRepository.formatTime(completionTime)
-                        + ") in Welt=" + world.getName()
-                        + (alias != null ? " (Alias=" + alias + ")" : ""));
-            }
+                        + ") in Welt=" + world.getName());
         }
 
-        if (JumpAndRun.getConfigManager().isDebug()) {
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler "
-                    + endPlayer.getName() + " hat den Run abgeschlossen: "
-                    + TimeRepository.formatTime(completionTime)
+        if (JumpAndRun.getConfigManager().isDebug())
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + endPlayer.getName()
+                    + " hat den Run abgeschlossen: " + TimeRepository.formatTime(completionTime)
                     + " (" + completionTime + "ms, Welt=" + world.getName() + ")");
-        }
 
-        // Run aufräumen
         RunRepository.clearRun(world, endPlayer);
         stopWatch(endPlayer);
-
         return completionTime;
     }
 
-    /**
-     * Stoppt und entfernt die persönliche StopWatch eines Spielers.
-     */
+    /** Stoppt und entfernt die persönliche StopWatch eines Spielers. */
     public static void stopWatch(Player player) {
         StopWatch sw = stopWatches.remove(player.getUniqueId());
-        if (sw != null) {
-            sw.stop();
-        }
+        if (sw != null) sw.stop();
     }
 
     public static void stopStopWatch(Player player) {
         stopWatch(player);
     }
 
-    /**
-     * Prüft, ob ein Spieler aktuell eine aktive StopWatch laufen hat.
-     */
+    /** Prüft, ob ein Spieler aktuell eine aktive StopWatch laufen hat. */
     public static boolean hasStopWatch(Player player) {
+        return stopWatches.containsKey(player.getUniqueId());
+    }
+
+    /** 🔹 Prüft, ob der Spieler aktuell einen aktiven Run hat. */
+    public static boolean hasActiveRun(Player player) {
         return stopWatches.containsKey(player.getUniqueId());
     }
 }

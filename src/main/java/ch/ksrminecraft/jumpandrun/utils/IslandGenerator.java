@@ -101,7 +101,7 @@ public class IslandGenerator {
     }
 
     /**
-     * Ergänzt zufällig platzierte Ranken entlang der äußeren Kanten der Startinsel.
+     * Ergänzt zufällig platzierte Ranken entlang der äusseren Kanten der Startinsel.
      */
     private static void addVinesOnTop1(World world, Location centerLocation, int radius, int startY, int endY, Random random) {
         for (int y = startY; y <= endY; y++) {

@@ -6,6 +6,7 @@ import ch.ksrminecraft.jumpandrun.listeners.WorldSwitchListener;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -13,7 +14,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.Material;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,9 +30,6 @@ public class AliasPromptManager implements Listener {
         Bukkit.getPluginManager().registerEvents(new AliasPromptManager(), JumpAndRun.getPlugin());
     }
 
-    /**
-     * Aktiviert den Prompt für einen Spieler.
-     */
     public static void awaitAliasInput(Player player, String worldName) {
         awaitingAlias.put(player.getUniqueId(), worldName);
         player.sendMessage("");
@@ -47,42 +44,58 @@ public class AliasPromptManager implements Listener {
 
         if (!awaitingAlias.containsKey(uuid)) return;
 
+        event.setCancelled(true);
         String alias = event.getMessage().trim();
         String worldName = awaitingAlias.remove(uuid);
 
-        event.setCancelled(true); // Verhindert, dass die Nachricht im Chat sichtbar ist
+        // === Eingabeprüfung ===
+        if (!isAliasValid(alias, player, worldName)) {
+            awaitingAlias.put(uuid, worldName);
+            return;
+        }
 
+        // === Name gültig → speichern
         handleAlias(player, worldName, alias);
+    }
+
+    private boolean isAliasValid(String alias, Player player, String worldName) {
+        if (alias.length() < 3 || alias.length() > 20) {
+            player.sendMessage(ChatColor.RED + "Der Name muss zwischen 3 und 20 Zeichen lang sein.");
+            return false;
+        }
+
+        if (alias.contains(" ")) {
+            player.sendMessage(ChatColor.RED + "Der Name darf keine Leerzeichen enthalten. Bitte versuche es erneut:");
+            return false;
+        }
+
+        if (!alias.matches("^[A-Za-z0-9_-]+$")) {
+            player.sendMessage(ChatColor.RED + "Ungültiger Name! Erlaubt sind nur Buchstaben, Zahlen, Unterstrich und Bindestrich.");
+            return false;
+        }
+
+        return true;
     }
 
     /**
      * Gemeinsame Logik für Chat-Prompt und /jnr name.
      */
     public static void handleAlias(Player player, String worldName, String alias) {
-        // Alias prüfen
-        if (alias.length() < 3 || alias.length() > 20) {
-            player.sendMessage(ChatColor.RED + "Der Name muss zwischen 3 und 20 Zeichen lang sein.");
-            awaitAliasInput(player, worldName); // Prompt erneut aktivieren
-            return;
-        }
-
-        // In DB setzen
+        // Alias speichern
         WorldRepository.setAlias(worldName, alias);
 
-        // Spieler informieren
         player.sendMessage(ChatColor.GREEN + "✔ Dein JumpAndRun heißt jetzt: §e" + alias);
 
-        // Spieler zurückteleportieren (Origin oder Fallback)
+        // Spieler zurückteleportieren
         Location origin = WorldSwitchListener.getOrigin(player);
         if (origin != null) {
             Bukkit.getScheduler().runTask(JumpAndRun.getPlugin(), () -> {
-                WorldSwitchListener.markSkipClear(player); // Inventar-Clear beim WorldSwitch überspringen
+                WorldSwitchListener.markSkipClear(player);
                 player.teleport(origin);
                 WorldSwitchListener.clearOrigin(player);
 
-                // Inventar manuell leeren und Schild geben
                 player.getInventory().clear();
-                giveSign(player);
+                giveSigns(player, alias);
 
                 player.sendMessage(ChatColor.GRAY + "Du wurdest zurück in die Lobby teleportiert.");
             });
@@ -91,22 +104,20 @@ public class AliasPromptManager implements Listener {
             World fallback = Bukkit.getWorld(fallbackName);
             if (fallback != null) {
                 Bukkit.getScheduler().runTask(JumpAndRun.getPlugin(), () -> {
-                    WorldSwitchListener.markSkipClear(player); // Inventar-Clear beim WorldSwitch überspringen
+                    WorldSwitchListener.markSkipClear(player);
                     player.teleport(fallback.getSpawnLocation());
 
-                    // Inventar manuell leeren und Schild geben
                     player.getInventory().clear();
-                    giveSign(player);
+                    giveSigns(player, alias);
 
                     player.sendMessage(ChatColor.GRAY + "Du wurdest zur Fallback-Welt '" + fallbackName + "' teleportiert.");
                 });
             } else {
-                player.sendMessage(ChatColor.RED + "Fehler: Weder eine gespeicherte Origin noch die Fallback-Welt '"
-                        + fallbackName + "' sind verfügbar.");
+                player.sendMessage(ChatColor.RED + "Fehler: Keine gültige Lobby- oder Fallback-Welt gefunden.");
             }
         }
 
-        // Schild-Anleitungen
+        // Schildanleitung anzeigen
         player.sendMessage("");
         player.sendMessage(ChatColor.YELLOW + "👉 So erstellst du ein Start-Schild:");
         player.sendMessage(ChatColor.AQUA + "Zeile 1: [JNR]");
@@ -123,14 +134,35 @@ public class AliasPromptManager implements Listener {
         }
     }
 
-    private static void giveSign(Player player) {
-        ItemStack sign = new ItemStack(Material.OAK_SIGN, 1);
-        ItemMeta meta = sign.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(ChatColor.AQUA + "JumpAndRun Schild");
-            sign.setItemMeta(meta);
+    /**
+     * Gibt dem Spieler zwei Schilder:
+     * - ein Start-Schild
+     * - ein Leaderboard-Schild
+     */
+    private static void giveSigns(Player player, String alias) {
+        ItemStack startSign = new ItemStack(Material.OAK_SIGN, 1);
+        ItemMeta meta1 = startSign.getItemMeta();
+        if (meta1 != null) {
+            meta1.setDisplayName(ChatColor.GREEN + "Start-Schild [JNR]");
+            meta1.setLore(java.util.Arrays.asList(
+                    ChatColor.GRAY + "Zeile 1: [JNR]",
+                    ChatColor.GRAY + "Zeile 2: " + alias
+            ));
+            startSign.setItemMeta(meta1);
         }
-        player.getInventory().addItem(sign);
+
+        ItemStack leaderSign = new ItemStack(Material.OAK_SIGN, 1);
+        ItemMeta meta2 = leaderSign.getItemMeta();
+        if (meta2 != null) {
+            meta2.setDisplayName(ChatColor.GOLD + "Leaderboard-Schild [JNR-LEADER]");
+            meta2.setLore(java.util.Arrays.asList(
+                    ChatColor.GRAY + "Zeile 1: [JNR-LEADER]",
+                    ChatColor.GRAY + "Zeile 2: " + alias
+            ));
+            leaderSign.setItemMeta(meta2);
+        }
+
+        player.getInventory().addItem(startSign, leaderSign);
     }
 
     public static boolean isAwaiting(Player player) {

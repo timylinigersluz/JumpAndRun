@@ -1,29 +1,22 @@
 package ch.ksrminecraft.jumpandrun.listeners;
 
+import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import ch.ksrminecraft.jumpandrun.utils.SignUpdater;
 import ch.ksrminecraft.jumpandrun.utils.TimeManager;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.util.Vector;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Merkt sich, aus welcher Welt/Position ein Spieler kommt,
- * wenn er in ein JumpAndRun wechselt, um später zurückzuteleportieren.
- * Stoppt außerdem laufende StopWatches, wenn Spieler die Welt verlässt.
- * Gibt beim Betreten einer JnR-Welt ein "Aufgeben"-Item.
- */
 public class WorldSwitchListener implements Listener {
 
     private static final Map<UUID, Location> originLocations = new HashMap<>();
@@ -38,6 +31,9 @@ public class WorldSwitchListener implements Listener {
         // --- Alte Welt verlassen ---
         if (WorldRepository.exists(oldWorld) && !WorldRepository.exists(newWorld)) {
             TimeManager.stopWatch(player);
+            player.setVelocity(new Vector(0, 0, 0));
+            player.setFallDistance(0);
+            player.setNoDamageTicks(20);
 
             if (!skipClear.getOrDefault(player.getUniqueId(), false)) {
                 player.getInventory().clear();
@@ -46,28 +42,51 @@ public class WorldSwitchListener implements Listener {
                 skipClear.remove(player.getUniqueId());
             }
 
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] StopWatch von "
-                    + player.getName() + " beim Verlassen der Welt " + oldWorld + " gestoppt.");
+            PressurePlateListener.clearCheckpoint(player.getUniqueId());
+
+            if (!WorldRepository.isPublished(oldWorld)) {
+                player.setGameMode(GameMode.SURVIVAL);
+                player.sendMessage(ChatColor.GRAY + "Dein Entwurf wurde verlassen – du bist wieder im Überlebensmodus.");
+            }
+
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] " + player.getName()
+                    + " hat Welt " + oldWorld + " verlassen (StopWatch gestoppt, Checkpoint gelöscht).");
+        }
+
+        // --- Falls neue Welt keine JnR-Welt ist (z. B. nach Weltlöschung) ---
+        if (!WorldRepository.exists(newWorld)) {
+            String fallbackWorldName = JumpAndRun.getConfigManager().getFallbackWorld();
+            World fallback = Bukkit.getWorld(fallbackWorldName);
+            if (fallback != null) {
+                player.teleport(fallback.getSpawnLocation());
+                player.setGameMode(GameMode.SURVIVAL);
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
+                        + " wurde nach Weltlöschung in Fallback-Welt teleportiert.");
+            }
+            return;
         }
 
         // --- Neue Welt betreten ---
-        if (WorldRepository.exists(newWorld)) {
-            Location fromSpawn = event.getFrom().getSpawnLocation();
-            originLocations.put(player.getUniqueId(), fromSpawn.clone());
+        Location fromSpawn = event.getFrom().getSpawnLocation();
+        originLocations.put(player.getUniqueId(), fromSpawn.clone());
 
-            giveLeaveItem(player);
+        giveLeaveItem(player);
 
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
-                    + " wechselt von " + oldWorld
-                    + " nach " + newWorld + " → Herkunft gespeichert: "
-                    + formatLocation(fromSpawn));
-
-            // 🔹 Nach kurzer Verzögerung Schilder aus DB laden & aktualisieren
-            Bukkit.getScheduler().runTaskLater(ch.ksrminecraft.jumpandrun.JumpAndRun.getPlugin(), () -> {
-                SignUpdater.loadAllFromDatabase();                 // Cache aktualisieren
-                SignUpdater.updateLeaderSigns(newWorld);           // Schilder dieser Welt neu zeichnen
-            }, 40L); // 2 Sekunden Delay – Welt vollständig geladen
+        if (!WorldRepository.isPublished(newWorld)) {
+            player.setGameMode(GameMode.CREATIVE);
+            player.sendMessage(ChatColor.AQUA + "Du bist jetzt im §lCreative-Modus §rfür deinen JumpAndRun-Entwurf.");
+        } else {
+            player.setGameMode(GameMode.SURVIVAL);
         }
+
+        Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
+                + " wechselt von " + oldWorld + " nach " + newWorld
+                + " → Herkunft gespeichert: " + formatLocation(fromSpawn));
+
+        Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
+            SignUpdater.loadAllFromDatabase();
+            SignUpdater.updateLeaderSigns(newWorld);
+        }, 40L);
     }
 
     public static void setOrigin(Player player, Location loc) {
@@ -90,14 +109,12 @@ public class WorldSwitchListener implements Listener {
 
     private void giveLeaveItem(Player player) {
         player.getInventory().clear();
-
         ItemStack leaveItem = new ItemStack(Material.BARRIER);
         ItemMeta meta = leaveItem.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(ChatColor.RED + "» Aufgeben & Welt verlassen «");
             leaveItem.setItemMeta(meta);
         }
-
         player.getInventory().setItem(8, leaveItem);
         player.updateInventory();
     }

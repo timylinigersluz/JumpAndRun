@@ -15,7 +15,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
  * Listener, der Spielerbewegungen überwacht und bei einem Sturz
  * unterhalb der hinterlegten Y-Grenze zurück zum letzten Checkpoint
  * (oder Startpunkt, falls keiner existiert) teleportiert.
- * Setzt außerdem Spielerwerte zurück, aber stoppt NICHT den aktiven Run.
+ * Setzt ausserdem Spielerwerte zurück, aber stoppt NICHT den aktiven Run.
  */
 public class FallDownListener implements Listener {
 
@@ -25,7 +25,14 @@ public class FallDownListener implements Listener {
         World world = player.getWorld();
         String worldName = world.getName();
 
-        // Nur in registrierten JnRs reagieren (außer Debugmodus)
+        // 🟢 NEU: Falls Spieler nicht in einer registrierten JumpAndRun-Welt ist,
+        // werden alte Checkpoints gelöscht, um Cross-World-Teleports zu verhindern.
+        if (!WorldRepository.exists(worldName)) {
+            PressurePlateListener.clearCheckpoint(player.getUniqueId());
+            return;
+        }
+
+        // Wenn Debug aktiv ist, dürfen auch Nicht-JnR-Welten geprüft werden (z. B. Testzwecke)
         if (!WorldRepository.exists(worldName) && !JumpAndRun.getConfigManager().isDebug()) {
             return;
         }
@@ -36,13 +43,13 @@ public class FallDownListener implements Listener {
         if (player.getY() < yLimit) {
             Location teleportLocation = null;
 
-            // 1. Prüfen ob Spieler einen Checkpoint hat
+            // 1️⃣ Prüfen, ob Spieler einen Checkpoint hat
             Location checkpoint = PressurePlateListener.getLastCheckpoint(player);
             if (checkpoint != null) {
                 teleportLocation = checkpoint.clone().add(0, 1, 0);
             }
 
-            // 2. Fallback: Mitte der Startinsel
+            // 2️⃣ Fallback: Mitte der Startinsel
             if (teleportLocation == null) {
                 Location start = WorldRepository.getStartLocation(worldName);
                 if (start != null) {
