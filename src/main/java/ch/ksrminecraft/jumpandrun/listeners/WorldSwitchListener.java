@@ -2,6 +2,7 @@ package ch.ksrminecraft.jumpandrun.listeners;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
+import ch.ksrminecraft.jumpandrun.utils.ConfigManager;
 import ch.ksrminecraft.jumpandrun.utils.SignUpdater;
 import ch.ksrminecraft.jumpandrun.utils.TimeManager;
 import org.bukkit.*;
@@ -28,6 +29,8 @@ public class WorldSwitchListener implements Listener {
         String newWorld = player.getWorld().getName();
         String oldWorld = event.getFrom().getName();
 
+        ConfigManager cfg = JumpAndRun.getConfigManager();
+
         // --- Alte Welt verlassen ---
         if (WorldRepository.exists(oldWorld) && !WorldRepository.exists(newWorld)) {
             TimeManager.stopWatch(player);
@@ -49,19 +52,46 @@ public class WorldSwitchListener implements Listener {
                 player.sendMessage(ChatColor.GRAY + "Dein Entwurf wurde verlassen – du bist wieder im Überlebensmodus.");
             }
 
-            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] " + player.getName()
-                    + " hat Welt " + oldWorld + " verlassen (StopWatch gestoppt, Checkpoint gelöscht).");
+            if (cfg.isDebug()) {
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] " + player.getName()
+                        + " hat Welt " + oldWorld + " verlassen (StopWatch gestoppt, Checkpoint gelöscht).");
+            }
         }
 
-        // --- Falls neue Welt keine JnR-Welt ist (z. B. nach Weltlöschung) ---
+        // --- Falls neue Welt keine JnR-Welt ist (z. B. Rückkehr zur Lobby) ---
         if (!WorldRepository.exists(newWorld)) {
-            String fallbackWorldName = JumpAndRun.getConfigManager().getFallbackWorld();
+            String fallbackWorldName = cfg.getFallbackWorld();
             World fallback = Bukkit.getWorld(fallbackWorldName);
+
+            boolean warpEnabled = cfg.isLobbyReturnEnabled();
+            String warpName = cfg.getLobbyWarpName();
+            int warpDelay = cfg.getLobbyWarpDelay();
+
             if (fallback != null) {
-                player.teleport(fallback.getSpawnLocation());
+                if (warpEnabled) {
+                    // Teleport per Warp-Befehl nach Delay
+                    Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
+                        if (Bukkit.getPluginManager().isPluginEnabled("Essentials")) {
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "warp " + warpName + " " + player.getName());
+
+                            if (cfg.isDebug()) {
+                                player.sendMessage(ChatColor.GRAY + "» Du wurdest automatisch zum Lobby-Warp §e" + warpName + " §rteleportiert.");
+                            }
+                        } else {
+                            player.teleport(fallback.getSpawnLocation());
+                            player.sendMessage(ChatColor.YELLOW + "[JumpAndRun] Essentials nicht gefunden – du wurdest zum Standard-Spawn teleportiert.");
+                        }
+                    }, warpDelay);
+                } else {
+                    player.teleport(fallback.getSpawnLocation());
+                }
+
                 player.setGameMode(GameMode.SURVIVAL);
-                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
-                        + " wurde nach Weltlöschung in Fallback-Welt teleportiert.");
+
+                if (cfg.isDebug()) {
+                    Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
+                            + " wurde nach Rückkehr in Fallback-Welt teleportiert (Warp aktiviert: " + warpEnabled + ").");
+                }
             }
             return;
         }
@@ -79,9 +109,11 @@ public class WorldSwitchListener implements Listener {
             player.setGameMode(GameMode.SURVIVAL);
         }
 
-        Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
-                + " wechselt von " + oldWorld + " nach " + newWorld
-                + " → Herkunft gespeichert: " + formatLocation(fromSpawn));
+        if (cfg.isDebug()) {
+            Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Spieler " + player.getName()
+                    + " wechselt von " + oldWorld + " nach " + newWorld
+                    + " → Herkunft gespeichert: " + formatLocation(fromSpawn));
+        }
 
         Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
             SignUpdater.loadAllFromDatabase();

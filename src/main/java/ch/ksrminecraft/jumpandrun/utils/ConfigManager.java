@@ -37,6 +37,11 @@ public class ConfigManager {
     private String pointsUser;
     private String pointsPassword;
 
+    // --- Lobby-Return Settings ---
+    private boolean lobbyReturnEnabled;
+    private String lobbyWarpName;
+    private int lobbyWarpDelay;
+
     public ConfigManager(JumpAndRun plugin) {
         this.plugin = plugin;
         loadConfig();
@@ -85,6 +90,18 @@ public class ConfigManager {
         // --- Fallback-Welt ---
         this.fallbackWorld = config.getString("fallback-world", "world");
 
+        // --- Lobby-Return ---
+        ConfigurationSection lobbySec = config.getConfigurationSection("lobby-return");
+        if (lobbySec != null) {
+            this.lobbyReturnEnabled = lobbySec.getBoolean("enabled", false);
+            this.lobbyWarpName = lobbySec.getString("warp-name", "jnr");
+            this.lobbyWarpDelay = lobbySec.getInt("delay-ticks", 10);
+        } else {
+            this.lobbyReturnEnabled = false;
+            this.lobbyWarpName = "jnr";
+            this.lobbyWarpDelay = 10;
+        }
+
         // --- Ungültige Welten bei gespeicherten Locations entfernen ---
         ConfigurationSection playersSection = config.getConfigurationSection("players");
         if (playersSection != null) {
@@ -112,14 +129,17 @@ public class ConfigManager {
                     "Platten: Start=" + startPlate + ", Ziel=" + endPlate + ", Checkpoint=" + checkpointPlate +
                     ", FallbackWorld=" + fallbackWorld +
                     ", JNR-DB=" + (jnrDbEnabled ? "MySQL" : "SQLite") +
-                    ", Points-DB=" + (pointsDbEnabled ? "MySQL" : "SQLite"));
+                    ", Points-DB=" + (pointsDbEnabled ? "MySQL" : "SQLite") +
+                    ", LobbyReturn=" + (lobbyReturnEnabled ? "aktiv (Warp=" + lobbyWarpName + ", Delay=" + lobbyWarpDelay + ")" : "deaktiviert"));
         } else {
             Bukkit.getConsoleSender().sendMessage("[JNR] Config geladen (Debug-Modus deaktiviert). FallbackWorld=" + fallbackWorld);
         }
     }
 
     // --- Getter ---
+
     public boolean isDebug() { return debug; }
+
     public String getFallbackWorld() { return fallbackWorld; }
 
     public Material getStartPlate() { return startPlate; }
@@ -140,4 +160,9 @@ public class ConfigManager {
     public String getPointsDatabase() { return pointsDatabase; }
     public String getPointsUser() { return pointsUser; }
     public String getPointsPassword() { return pointsPassword; }
+
+    // --- Lobby-Return Getter ---
+    public boolean isLobbyReturnEnabled() { return lobbyReturnEnabled; }
+    public String getLobbyWarpName() { return lobbyWarpName; }
+    public int getLobbyWarpDelay() { return lobbyWarpDelay; }
 }

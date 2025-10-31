@@ -4,7 +4,7 @@
 debug: true
 
 # JumpAndRun-DB (MySQL)
-jumpandrun:
+mysql:
   enabled: false
   host: localhost
   port: 3306
@@ -35,5 +35,12 @@ points:
 # Fallback-Welt (z. B. Lobby)
 fallback-world: world
 
-# Spieler (nicht verändern)
-players: {}
+
+# Rückkehr zur Lobby - du kannst (falls Essentals installiert ist) einen Warp definieren
+lobby-return:
+  enabled: false           # ob die Warp-Rückkehr aktiv ist
+  warp-name: jnr          # Zielwarp-Name (Essentials/MyWarp)
+  delay-ticks: 10         # optional: Wartezeit nach Weltwechsel
+
+  # Spieler (nicht verändern)
+  players: { }
