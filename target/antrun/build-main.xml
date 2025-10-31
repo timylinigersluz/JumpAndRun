@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="maven-antrun-" default="main">
+  <target name="main">
+    <copy file="C:\Users\tlini\IdeaProjects\JumpAndRun\target/JumpAndRun-1.3.jar" tofile="D:/minecraft/Testserver/plugins/JumpAndRun-1.3.jar" overwrite="true" />
+  </target>
+</project>
