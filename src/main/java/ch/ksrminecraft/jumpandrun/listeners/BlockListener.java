@@ -23,8 +23,9 @@ public class BlockListener implements Listener {
     private static final long MESSAGE_COOLDOWN = 3000; // 3 Sekunden
     private final Map<UUID, Long> lastMessage = new HashMap<>();
 
+    /** Prüft, ob Welt existiert und veröffentlicht ist. */
     private boolean isProtectedWorld(String worldName) {
-        return WorldRepository.isPublished(worldName);
+        return WorldRepository.exists(worldName) && WorldRepository.isPublished(worldName);
     }
 
     private void sendCooldownMessage(Player player, String message) {
@@ -39,7 +40,9 @@ public class BlockListener implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
-        if (isProtectedWorld(event.getBlock().getWorld().getName())) {
+        String worldName = event.getBlock().getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return; // ✅ Nur in JnR-Welten prüfen
+        if (isProtectedWorld(worldName)) {
             event.setCancelled(true);
             sendCooldownMessage(event.getPlayer(), "Du darfst hier keine Blöcke abbauen!");
         }
@@ -47,7 +50,9 @@ public class BlockListener implements Listener {
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
-        if (isProtectedWorld(event.getBlock().getWorld().getName())) {
+        String worldName = event.getBlock().getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return;
+        if (isProtectedWorld(worldName)) {
             event.setCancelled(true);
             sendCooldownMessage(event.getPlayer(), "Du darfst hier keine Blöcke platzieren!");
         }
@@ -55,7 +60,9 @@ public class BlockListener implements Listener {
 
     @EventHandler
     public void onBucketEmpty(PlayerBucketEmptyEvent event) {
-        if (isProtectedWorld(event.getBlock().getWorld().getName())) {
+        String worldName = event.getBlock().getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return;
+        if (isProtectedWorld(worldName)) {
             event.setCancelled(true);
             sendCooldownMessage(event.getPlayer(), "Du darfst hier keine Flüssigkeiten platzieren!");
         }
@@ -63,7 +70,9 @@ public class BlockListener implements Listener {
 
     @EventHandler
     public void onBucketFill(PlayerBucketFillEvent event) {
-        if (isProtectedWorld(event.getBlock().getWorld().getName())) {
+        String worldName = event.getBlock().getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return;
+        if (isProtectedWorld(worldName)) {
             event.setCancelled(true);
             sendCooldownMessage(event.getPlayer(), "Du darfst hier keine Flüssigkeiten entnehmen!");
         }
@@ -71,7 +80,10 @@ public class BlockListener implements Listener {
 
     @EventHandler
     public void onBlockIgnite(BlockIgniteEvent event) {
-        if (isProtectedWorld(event.getBlock().getWorld().getName())) {
+        if (event.getBlock() == null || event.getBlock().getWorld() == null) return;
+        String worldName = event.getBlock().getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return;
+        if (isProtectedWorld(worldName)) {
             event.setCancelled(true);
             if (event.getPlayer() != null) {
                 sendCooldownMessage(event.getPlayer(), "Feuer ist hier deaktiviert!");
@@ -81,7 +93,10 @@ public class BlockListener implements Listener {
 
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
-        if (isProtectedWorld(event.getLocation().getWorld().getName())) {
+        if (event.getLocation().getWorld() == null) return;
+        String worldName = event.getLocation().getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return;
+        if (isProtectedWorld(worldName)) {
             event.blockList().clear();
             event.setCancelled(true);
         }
@@ -89,14 +104,20 @@ public class BlockListener implements Listener {
 
     @EventHandler
     public void onBlockSpread(BlockSpreadEvent event) {
-        if (isProtectedWorld(event.getBlock().getWorld().getName())) {
+        if (event.getBlock() == null || event.getBlock().getWorld() == null) return;
+        String worldName = event.getBlock().getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return;
+        if (isProtectedWorld(worldName)) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onBlockFromTo(BlockFromToEvent event) {
-        if (isProtectedWorld(event.getBlock().getWorld().getName())) {
+        if (event.getBlock() == null || event.getBlock().getWorld() == null) return;
+        String worldName = event.getBlock().getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return;
+        if (isProtectedWorld(worldName)) {
             event.setCancelled(true);
         }
     }

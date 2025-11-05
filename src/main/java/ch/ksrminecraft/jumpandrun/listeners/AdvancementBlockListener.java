@@ -20,9 +20,10 @@ public class AdvancementBlockListener implements Listener {
     @EventHandler
     public void onAdvancementDone(PlayerAdvancementDoneEvent event) {
         Player player = event.getPlayer();
-        String worldName = player.getWorld().getName();
 
-        // Nur blockieren, wenn die Welt ein JumpAndRun ist
+        // ✅ Schutzmechanismus: Nur in JumpAndRun-Welten ausführen
+        if (player == null || player.getWorld() == null) return;
+        String worldName = player.getWorld().getName();
         if (!WorldRepository.exists(worldName)) return;
 
         Advancement advancement = event.getAdvancement();

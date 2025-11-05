@@ -42,5 +42,11 @@ lobby-return:
   warp-name: jnr          # Zielwarp-Name (Essentials/MyWarp)
   delay-ticks: 10         # optional: Wartezeit nach Weltwechsel
 
+# Welten, bei denen kein automatischer Rückteleport ausgeführt wird
+excluded-worlds:
+  - world
+  - lobby
+  - tnt
+
   # Spieler (nicht verändern)
-  players: { }
+players: { }

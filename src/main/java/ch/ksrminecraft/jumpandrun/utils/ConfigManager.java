@@ -6,6 +6,9 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Zentraler Config-Manager für das JumpAndRun-Plugin.
  * Lädt Werte aus der config.yml und stellt sie dem restlichen Plugin bereit.
@@ -134,6 +137,15 @@ public class ConfigManager {
         } else {
             Bukkit.getConsoleSender().sendMessage("[JNR] Config geladen (Debug-Modus deaktiviert). FallbackWorld=" + fallbackWorld);
         }
+    }
+
+    // --- Excluded Worlds Getter ---
+    public List<String> getExcludedWorlds() {
+        List<String> worlds = plugin.getConfig().getStringList("excluded-worlds");
+        if (worlds == null || worlds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return worlds;
     }
 
     // --- Getter ---

@@ -13,7 +13,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 
 /**
  * Stellt sicher, dass Spieler nach einem Tod in einer JumpAndRun-Welt
- * (auch Drafts oder KeepWorlds) immer in derselben Welt respawnen –
+ * (Drafts oder veröffentlichte) immer in derselben Welt respawnen –
  * am letzten Checkpoint oder am Startpunkt.
  */
 public class CheckpointRespawnListener implements Listener {
@@ -21,21 +21,17 @@ public class CheckpointRespawnListener implements Listener {
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
+        if (player == null || player.getWorld() == null) return;
+
         World world = player.getWorld();
         String worldName = world.getName();
 
-        // 🟡 Nur reagieren, wenn Welt eine JumpAndRun-Welt ist (Name oder DB-Eintrag)
-        boolean isJumpAndRunWorld =
-                worldName.toLowerCase().startsWith("jnr_") || WorldRepository.exists(worldName);
-
-        if (!isJumpAndRunWorld) {
-            // Normale Welten ignorieren (z. B. Lobby, Bedwars etc.)
-            return;
-        }
+        // ✅ Nur reagieren, wenn Welt in WorldRepository registriert ist
+        if (!WorldRepository.exists(worldName)) return;
 
         // Ziel bestimmen: Checkpoint oder Startpunkt
         Location checkpoint = PressurePlateListener.getLastCheckpoint(player);
-        Location target = null;
+        Location target;
 
         if (checkpoint != null) {
             target = checkpoint.clone().add(0, 1, 0);
@@ -44,23 +40,23 @@ public class CheckpointRespawnListener implements Listener {
             if (start != null) {
                 target = start.clone().add(0, 1, 0);
             } else {
-                // Wenn Welt keine gespeicherten Punkte hat, fallback = Weltspawn
+                // Fallback: Weltspawn
                 target = world.getSpawnLocation().clone().add(0, 1, 0);
             }
         }
 
         Location finalTarget = target;
 
-        // 1 Tick delay, um Vanilla-Respawn abzuschliessen
+        // 1 Tick warten, um Vanilla-Respawn abzuschließen
         Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), () -> {
             if (!player.isOnline()) return;
 
-            // 🟢 Garantieren, dass der Spieler in derselben Welt bleibt
+            // Spieler bleibt in derselben Welt
             if (!player.getWorld().equals(world)) {
                 player.teleport(finalTarget);
             }
 
-            // Spieler zurücksetzen (Health, Hunger, Velocity)
+            // Spieler zurücksetzen (Health, Hunger, Velocity etc.)
             PlayerUtils.resetState(player);
             player.teleport(finalTarget);
             player.sendMessage("§eDu wurdest zu deinem letzten Checkpoint zurückgesetzt.");

@@ -15,6 +15,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.Vector;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -60,6 +61,17 @@ public class WorldSwitchListener implements Listener {
 
         // --- Falls neue Welt keine JnR-Welt ist (z. B. Rückkehr zur Lobby) ---
         if (!WorldRepository.exists(newWorld)) {
+
+            // 🧩 NEU: Whitelist aus der Config lesen
+            List<String> excludedWorlds = cfg.getExcludedWorlds();
+            if (excludedWorlds != null && excludedWorlds.stream().anyMatch(w -> w.equalsIgnoreCase(newWorld))) {
+                if (cfg.isDebug()) {
+                    Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] " + player.getName()
+                            + " betritt ausgeschlossene Welt '" + newWorld + "' – kein Teleport zur Lobby.");
+                }
+                return; // keine Aktion – Welt ist auf der Whitelist
+            }
+
             String fallbackWorldName = cfg.getFallbackWorld();
             World fallback = Bukkit.getWorld(fallbackWorldName);
 

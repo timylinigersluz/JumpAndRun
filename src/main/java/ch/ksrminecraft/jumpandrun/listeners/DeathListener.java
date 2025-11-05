@@ -20,15 +20,12 @@ public class DeathListener implements Listener {
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
+        if (player == null || player.getWorld() == null) return;
+
         String worldName = player.getWorld().getName();
 
-        // Nur reagieren, wenn es sich um eine JumpAndRun-Welt handelt (auch Drafts)
-        boolean isJumpAndRunWorld =
-                worldName.toLowerCase().startsWith("jnr_") || WorldRepository.exists(worldName);
-
-        if (!isJumpAndRunWorld) {
-            return;
-        }
+        // ✅ Nur reagieren, wenn die Welt in WorldRepository registriert ist
+        if (!WorldRepository.exists(worldName)) return;
 
         // Nur Hinweis an den Spieler – kein Abbruch, keine Zeitunterbrechung
         player.sendMessage(ChatColor.YELLOW + "Du bist gestorben! "
@@ -37,7 +34,8 @@ public class DeathListener implements Listener {
         if (JumpAndRun.getConfigManager().isDebug()) {
             Bukkit.getConsoleSender().sendMessage(
                     "[JNR-DEBUG] Spieler " + player.getName() +
-                            " ist in Welt " + worldName + " gestorben → Respawn ohne Abbruch, Zeit läuft weiter.");
+                            " ist in Welt " + worldName + " gestorben → Respawn ohne Abbruch, Zeit läuft weiter."
+            );
         }
     }
 }

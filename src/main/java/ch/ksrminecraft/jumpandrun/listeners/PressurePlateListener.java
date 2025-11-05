@@ -4,18 +4,8 @@ import ch.ksrminecraft.jumpandrun.JumpAndRun;
 import ch.ksrminecraft.jumpandrun.db.CheckpointRepository;
 import ch.ksrminecraft.jumpandrun.db.TimeRepository;
 import ch.ksrminecraft.jumpandrun.db.WorldRepository;
-import ch.ksrminecraft.jumpandrun.utils.PlayerUtils;
-import ch.ksrminecraft.jumpandrun.utils.PointsService;
-import ch.ksrminecraft.jumpandrun.utils.TestRunManager;
-import ch.ksrminecraft.jumpandrun.utils.TimeManager;
-import ch.ksrminecraft.jumpandrun.utils.SignUpdater;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Color;
-import org.bukkit.FireworkEffect;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import ch.ksrminecraft.jumpandrun.utils.*;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
@@ -31,6 +21,7 @@ import java.util.UUID;
 
 /**
  * Listener für Druckplatten: Start, Checkpoints, Ziel.
+ * Aktiv nur in registrierten JumpAndRun-Welten.
  */
 public class PressurePlateListener implements Listener {
 
@@ -44,9 +35,13 @@ public class PressurePlateListener implements Listener {
 
         Player player = event.getPlayer();
         Block clickedBlock = event.getClickedBlock();
-        if (clickedBlock == null) return;
+        if (player == null || clickedBlock == null || clickedBlock.getWorld() == null) return;
 
         String worldName = clickedBlock.getWorld().getName();
+
+        // ✅ Nur in JumpAndRun-Welten aktiv
+        if (!WorldRepository.exists(worldName)) return;
+
         Material blockType = clickedBlock.getType();
 
         // ==== Cooldown prüfen ====
@@ -105,7 +100,7 @@ public class PressurePlateListener implements Listener {
 
                 player.sendMessage(ChatColor.GREEN + "✔ Funktionstest erfolgreich abgeschlossen!");
                 player.sendMessage(ChatColor.AQUA + "Bitte vergebe deiner Welt noch einen Alias.");
-                ch.ksrminecraft.jumpandrun.utils.AliasPromptManager.awaitAliasInput(player, worldName);
+                AliasPromptManager.awaitAliasInput(player, worldName);
 
                 debug("Funktionstest abgeschlossen (Spieler=" + player.getName() + ", Dauer=" + duration + "ms).");
                 return;
@@ -138,12 +133,9 @@ public class PressurePlateListener implements Listener {
                     } else {
                         debug("Kein Rekord: " + player.getName() + " → " + duration + "ms (Beste=" + bestTime + ")");
                     }
-                } else {
-                    // Keine Startzeit gefunden → keine Chat-Meldung, nur Debug
-                    if (JumpAndRun.getConfigManager().isDebug()) {
-                        Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Zielplatte ohne Startzeit: Spieler="
-                                + player.getName() + ", Welt=" + worldName);
-                    }
+                } else if (JumpAndRun.getConfigManager().isDebug()) {
+                    Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] Zielplatte ohne Startzeit: Spieler="
+                            + player.getName() + ", Welt=" + worldName);
                 }
 
                 debug(player.getName() + " hat die Zieldruckplatte in Welt " + worldName
@@ -217,7 +209,7 @@ public class PressurePlateListener implements Listener {
         firework.setFireworkMeta(meta);
 
         // 🔹 Kein Schaden durch Feuerwerk
-        ch.ksrminecraft.jumpandrun.listeners.FireworkNoDamageListener.markNoDamage(firework);
+        FireworkNoDamageListener.markNoDamage(firework);
         Bukkit.getScheduler().runTaskLater(JumpAndRun.getPlugin(), firework::detonate, 1L);
     }
 }

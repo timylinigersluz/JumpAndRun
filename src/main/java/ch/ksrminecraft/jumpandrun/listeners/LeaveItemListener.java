@@ -1,6 +1,7 @@
 package ch.ksrminecraft.jumpandrun.listeners;
 
 import ch.ksrminecraft.jumpandrun.JumpAndRun;
+import ch.ksrminecraft.jumpandrun.db.WorldRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -14,15 +15,25 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+/**
+ * Reagiert auf das spezielle Barrier-Item ("» Aufgeben & Welt verlassen «")
+ * und teleportiert den Spieler zurück in seine Ursprung- oder Fallback-Welt.
+ * Aktiv nur in JumpAndRun-Welten.
+ */
 public class LeaveItemListener implements Listener {
 
     @EventHandler
     public void onPlayerUse(PlayerInteractEvent event) {
-        ItemStack item = event.getItem();
-        if (item == null) return;
-        if (!item.hasItemMeta()) return;
-
         Player player = event.getPlayer();
+        if (player == null || player.getWorld() == null) return;
+
+        // ✅ Nur in registrierten JumpAndRun-Welten aktiv
+        String worldName = player.getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return;
+
+        ItemStack item = event.getItem();
+        if (item == null || !item.hasItemMeta()) return;
+
         ItemMeta meta = item.getItemMeta();
         if (meta == null || !meta.hasDisplayName()) return;
 
@@ -43,8 +54,10 @@ public class LeaveItemListener implements Listener {
 
             // Effekt: Sound + Partikel
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
-            player.getWorld().spawnParticle(Particle.SMOKE_LARGE, player.getLocation().add(0, 1, 0),
-                    30, 0.5, 0.5, 0.5, 0.01);
+            player.getWorld().spawnParticle(
+                    Particle.SMOKE_LARGE, player.getLocation().add(0, 1, 0),
+                    30, 0.5, 0.5, 0.5, 0.01
+            );
 
             // Erst versuchen, zur Origin zu teleportieren
             if (WorldSwitchListener.getOrigin(player) != null) {
@@ -61,8 +74,11 @@ public class LeaveItemListener implements Listener {
             } else {
                 player.sendMessage(ChatColor.RED + "Fehler: Keine gültige Fallback-Welt gefunden!");
             }
-        }
 
-        // Hinweis: Das Schild (OAK_SIGN) wird hier absichtlich ignoriert
+            if (JumpAndRun.getConfigManager().isDebug()) {
+                Bukkit.getConsoleSender().sendMessage("[JNR-DEBUG] "
+                        + player.getName() + " hat das Aufgeben-Item verwendet in Welt " + worldName);
+            }
+        }
     }
 }

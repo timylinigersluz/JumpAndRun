@@ -17,6 +17,7 @@ import org.bukkit.inventory.ItemStack;
  */
 public class BarrierProtectionListener implements Listener {
 
+    /** Prüft, ob es sich um das spezielle Barrier-Item handelt. */
     private boolean isBarrierItem(ItemStack item) {
         if (item == null || item.getType() != Material.BARRIER) return false;
         if (!item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return false;
@@ -28,47 +29,48 @@ public class BarrierProtectionListener implements Listener {
     @EventHandler
     public void onItemDrop(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
-        String worldName = player.getWorld().getName();
+        if (player == null || player.getWorld() == null) return;
 
-        if (WorldRepository.exists(worldName)) {
-            ItemStack dropped = event.getItemDrop().getItemStack();
-            if (isBarrierItem(dropped)) {
-                event.setCancelled(true);
-                player.sendMessage(ChatColor.GRAY + "Dieses Item kannst du hier nicht wegwerfen.");
-            }
+        String worldName = player.getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return; // ✅ Nur in JnR-Welten aktiv
+
+        ItemStack dropped = event.getItemDrop().getItemStack();
+        if (isBarrierItem(dropped)) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.GRAY + "Dieses Item kannst du hier nicht wegwerfen.");
         }
     }
 
     /** 🔹 Verhindert Verschieben im Inventar */
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player)) return;
-        Player player = (Player) event.getWhoClicked();
-        String worldName = player.getWorld().getName();
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (player.getWorld() == null) return;
 
-        if (WorldRepository.exists(worldName)) {
-            ItemStack clicked = event.getCurrentItem();
-            if (isBarrierItem(clicked)) {
-                event.setCancelled(true);
-                player.updateInventory();
-            }
+        String worldName = player.getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return; // ✅ Nur in JnR-Welten aktiv
+
+        ItemStack clicked = event.getCurrentItem();
+        if (isBarrierItem(clicked)) {
+            event.setCancelled(true);
+            player.updateInventory();
         }
     }
 
     /** 🔹 Verhindert Drag-and-Drop von Barrier-Item */
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
-        if (!(event.getWhoClicked() instanceof Player)) return;
-        Player player = (Player) event.getWhoClicked();
-        String worldName = player.getWorld().getName();
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (player.getWorld() == null) return;
 
-        if (WorldRepository.exists(worldName)) {
-            for (ItemStack item : event.getNewItems().values()) {
-                if (isBarrierItem(item)) {
-                    event.setCancelled(true);
-                    player.updateInventory();
-                    break;
-                }
+        String worldName = player.getWorld().getName();
+        if (!WorldRepository.exists(worldName)) return; // ✅ Nur in JnR-Welten aktiv
+
+        for (ItemStack item : event.getNewItems().values()) {
+            if (isBarrierItem(item)) {
+                event.setCancelled(true);
+                player.updateInventory();
+                break;
             }
         }
     }
