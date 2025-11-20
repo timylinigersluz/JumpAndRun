@@ -9,6 +9,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -46,49 +47,48 @@ public class SignListener implements Listener {
         String newHeader = safeLine(event.getLine(0));
         String newAlias  = safeLine(event.getLine(1));
 
-        // Alten Zustand prüfen (war das Schild vorher geschützt?)
+        // Alten Zustand erfassen
         String oldHeader = "";
+        String oldAlias  = "";
         if (block.getState() instanceof Sign oldSign) {
             oldHeader = ChatColor.stripColor(oldSign.getLine(0));
+            oldAlias  = ChatColor.stripColor(oldSign.getLine(1));
         }
 
-        // A) Bearbeiten eines BESTEHENDEN geschützten Schilds → nur Creative + Permission
-        if (isProtectedSignType(oldHeader)) {
+        // A) Geschütztes Schild bearbeiten → nur Creative & Permission
+        if (isProtectedSignType(oldHeader, oldAlias)) {
             if (!player.hasPermission(PERM_SIGN_INTERACT)) {
                 event.setCancelled(true);
                 player.sendMessage(ChatColor.RED + "❌ Du darfst dieses JumpAndRun-Schild nicht verändern.");
-                debug("→ Blockiert: " + player.getName() + " versuchte, ein bestehendes " + oldHeader + "-Schild zu verändern.");
+                debug("→ Blockiert: " + player.getName() + " wollte ein " + oldHeader + "-Schild bearbeiten.");
                 return;
             }
             if (player.getGameMode() != GameMode.CREATIVE) {
                 event.setCancelled(true);
                 player.sendMessage(ChatColor.RED + "❌ JumpAndRun-Schilder dürfen nur im Creative-Modus bearbeitet werden.");
-                debug("→ Blockiert: " + player.getName() + " ist im falschen Modus (" + player.getGameMode() + ") beim Bearbeiten von " + oldHeader);
+                debug("→ Blockiert: " + player.getName() + " ist im falschen Modus (" + player.getGameMode() + ")");
                 return;
             }
-            // Ab hier: Bearbeiten ist erlaubt (Creative + Permission)
         }
 
-        // B) NEU setzen (oder Konvertieren eines normalen Schilds zu [JNR]/[JNR-LEADER])
+        // B) Neues Schild: [JNR] oder [JNR-LEADER]
         if (newHeader.equalsIgnoreCase("[JNR]") || newHeader.equalsIgnoreCase("[JNR-LEADER]")) {
-            debug(player.getName() + " erstellt/ändert ein Schild mit Kopfzeile '" + newHeader + "'.");
+            debug(player.getName() + " erstellt/ändert ein Schild mit '" + newHeader + "'.");
 
-            // NEU setzen: nur Permission nötig (Gamemode egal)
             if (!player.hasPermission(PERM_SIGN_INTERACT)) {
                 event.setCancelled(true);
                 player.sendMessage(ChatColor.RED + "❌ Du darfst keine JumpAndRun-Schilder erstellen.");
-                debug("→ Abgebrochen: " + player.getName() + " hat keine Permission (" + PERM_SIGN_INTERACT + ")");
                 return;
             }
 
-            // === [JNR] Start-Schild ===
+            // ===== [JNR] Start-Schild =====
             if (newHeader.equalsIgnoreCase("[JNR]")) {
                 if (newAlias.isEmpty()) {
                     event.setLine(0, ChatColor.RED + "[JNR]");
                     event.setLine(1, ChatColor.RED + "Alias fehlt");
                     event.setLine(2, ChatColor.GRAY + "Zeile 2: Alias");
                     player.sendMessage(ChatColor.RED + "Bitte gib in Zeile 2 den Alias an.");
-                    debug("→ Alias fehlt beim Erstellen von [JNR]-Schild durch " + player.getName());
+                    debug("→ Alias fehlt bei [JNR]-Erstellung.");
                     return;
                 }
 
@@ -98,18 +98,17 @@ public class SignListener implements Listener {
                 event.setLine(3, ChatColor.GRAY + "Klicke zum Spielen");
 
                 player.sendMessage(ChatColor.GREEN + "Start-Schild für '" + newAlias + "' erstellt.");
-                debug("→ [JNR]-Schild erfolgreich erstellt für Alias '" + newAlias + "'");
+                debug("→ [JNR]-Schild erstellt für Alias '" + newAlias + "'");
                 return;
             }
 
-            // === [JNR-LEADER] Leaderboard-Schild ===
+            // ===== [JNR-LEADER] Leaderboard-Schild =====
             if (newHeader.equalsIgnoreCase("[JNR-LEADER]")) {
                 if (newAlias.isEmpty()) {
                     event.setLine(0, ChatColor.DARK_RED + "[JNR-LEADER]");
                     event.setLine(1, ChatColor.RED + "Alias fehlt");
                     event.setLine(2, ChatColor.GRAY + "Zeile 2: Alias");
                     player.sendMessage(ChatColor.RED + "Bitte gib in Zeile 2 den Alias an.");
-                    debug("→ Alias fehlt beim Erstellen von [JNR-LEADER]-Schild durch " + player.getName());
                     return;
                 }
 
@@ -120,7 +119,6 @@ public class SignListener implements Listener {
                     event.setLine(2, ChatColor.GRAY + newAlias);
                     event.setLine(3, ChatColor.GRAY + "Alias prüfen");
                     player.sendMessage(ChatColor.RED + "Alias '" + newAlias + "' existiert nicht.");
-                    debug("→ Fehler: Kein Weltname für Alias '" + newAlias + "'");
                     return;
                 }
 
@@ -134,19 +132,17 @@ public class SignListener implements Listener {
                         if (event.getBlock().getState() instanceof Sign sign) {
                             SignUpdater.registerLeaderSign(newAlias, sign.getLocation());
                             SignUpdater.updateLeaderSigns(newAlias);
-                            debug("→ Leader-Schild registriert & aktualisiert für '" + newAlias + "'");
                         }
                     }
                 }.runTaskLater(JumpAndRun.getPlugin(), 1L);
 
                 player.sendMessage(ChatColor.GREEN + "Leader-Schild für '" + newAlias + "' erstellt.");
-                debug("→ [JNR-LEADER]-Schild erfolgreich erstellt für '" + newAlias + "'");
             }
         }
     }
 
     // ------------------------------------------------------------
-    // 2) Klick: Teleport über [JNR]
+    // 2) Klick: Teleport bei [JNR]
     // ------------------------------------------------------------
     @EventHandler(ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
@@ -154,42 +150,51 @@ public class SignListener implements Listener {
         if (!(event.getClickedBlock().getState() instanceof Sign sign)) return;
 
         Player player = event.getPlayer();
-        String line0 = ChatColor.stripColor(sign.getLine(0));
-        String alias = ChatColor.stripColor(sign.getLine(1));
-        if (line0 == null || alias == null) return;
 
-        if (line0.equalsIgnoreCase("[JNR]")) {
-            debug(player.getName() + " klickt auf [JNR]-Schild (Alias: " + alias + ")");
-
-            String worldName = WorldRepository.getWorldByAlias(alias);
-            if (worldName == null || !WorldRepository.isPublished(worldName)) {
-                player.sendMessage("§cDieses JumpAndRun ist nicht verfügbar.");
-                debug("→ Kein gültiges Ziel: Welt '" + worldName + "' nicht veröffentlicht oder unbekannt.");
-                event.setCancelled(true);
-                return;
-            }
-
-            Location start = WorldRepository.getStartLocation(worldName);
-            if (start == null) {
-                player.sendMessage("§cStartposition konnte nicht gefunden werden.");
-                debug("→ Startposition für '" + worldName + "' nicht gefunden.");
-                event.setCancelled(true);
-                return;
-            }
-
-            Location tpLoc = start.clone().add(0, JumpAndRun.height + 1, 0);
-            tpLoc.setYaw(-90f);
-            tpLoc.setPitch(0f);
-
-            player.teleport(tpLoc);
-            player.sendMessage("§aTeleportiert zum Start von §e" + alias);
-            debug("→ " + player.getName() + " wurde zu '" + worldName + "' teleportiert.");
-            event.setCancelled(true);
+        // --------------------------------------------------------
+        // Creative + Permission → NICHT interagieren, NICHT teleportieren
+        // → Schild darf abgebaut werden
+        // --------------------------------------------------------
+        if (player.getGameMode() == GameMode.CREATIVE &&
+                player.hasPermission(PERM_SIGN_INTERACT)) {
+            return;
         }
+
+        // Ab hier nur SURVIVAL-Interaktionen beachten
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+
+        String header = ChatColor.stripColor(sign.getLine(0));
+        String alias  = ChatColor.stripColor(sign.getLine(1));
+
+        if (!"[JNR]".equalsIgnoreCase(header)) return;
+
+        // ---- Teleport-Logik ----
+        String worldName = WorldRepository.getWorldByAlias(alias);
+        if (worldName == null || !WorldRepository.isPublished(worldName)) {
+            player.sendMessage("§cDieses JumpAndRun ist nicht verfügbar.");
+            event.setCancelled(true);
+            return;
+        }
+
+        Location start = WorldRepository.getStartLocation(worldName);
+        if (start == null) {
+            player.sendMessage("§cStartposition konnte nicht gefunden werden.");
+            event.setCancelled(true);
+            return;
+        }
+
+        Location tpLoc = start.clone().add(0, JumpAndRun.height + 1, 0);
+        tpLoc.setYaw(-90f);
+        tpLoc.setPitch(0f);
+
+        player.teleport(tpLoc);
+        player.sendMessage("§aTeleportiert zum Start von §e" + alias);
+        event.setCancelled(true);
     }
 
+
     // ------------------------------------------------------------
-    // 3) Abbauen geschützt
+    // 3) Abbauen (geschützt)
     // ------------------------------------------------------------
     @EventHandler(ignoreCancelled = true)
     public void onSignBreak(BlockBreakEvent event) {
@@ -200,29 +205,42 @@ public class SignListener implements Listener {
         String header = ChatColor.stripColor(sign.getLine(0));
         String alias  = ChatColor.stripColor(sign.getLine(1));
 
-        if (isProtectedSignType(header)) {
-            debug(player.getName() + " versucht, ein " + header + "-Schild (Alias: " + alias + ") abzubauen.");
+        // Sonderfall: [JNR] ohne Alias → nie geschützt
+        if (header.equalsIgnoreCase("[JNR]") && (alias == null || alias.isEmpty())) {
+            return;
+        }
 
-            if (!player.hasPermission(PERM_SIGN_INTERACT) || player.getGameMode() != GameMode.CREATIVE) {
+        if (isProtectedSignType(header, alias)) {
+            if (!player.hasPermission(PERM_SIGN_INTERACT) ||
+                    player.getGameMode() != GameMode.CREATIVE) {
+
                 event.setCancelled(true);
                 player.sendMessage(ChatColor.RED + "❌ Du darfst dieses JumpAndRun-Schild nicht abbauen.");
-                debug("→ Blockiert: " + player.getName() + " hat keine Rechte oder ist nicht im Creative-Modus (" + player.getGameMode() + ")");
                 return;
             }
 
-            // Entfernen erlaubt
-            SignUpdater.unregisterLeaderSign(alias, block.getLocation());
-            player.sendMessage(ChatColor.GRAY + "Schild für '" + alias + "' wurde entfernt.");
-            debug("→ Schild für '" + alias + "' erfolgreich entfernt durch " + player.getName());
+            // Nur Leader-Schilder deregistrieren
+            if (header.equalsIgnoreCase("[JNR-LEADER]") && alias != null && !alias.isEmpty()) {
+                SignUpdater.unregisterLeaderSign(alias, block.getLocation());
+            }
+
+            player.sendMessage("§7Schild entfernt.");
         }
     }
 
     // ------------------------------------------------------------
     // Hilfsmethoden
     // ------------------------------------------------------------
-    private boolean isProtectedSignType(String text) {
-        return text != null &&
-                (text.equalsIgnoreCase("[JNR]") || text.equalsIgnoreCase("[JNR-LEADER]"));
+    private boolean isProtectedSignType(String header, String alias) {
+        if (header == null) return false;
+
+        boolean match = header.equalsIgnoreCase("[JNR]") ||
+                header.equalsIgnoreCase("[JNR-LEADER]");
+
+        if (!match) return false;
+
+        // Nur echte Schilder schützen
+        return alias != null && !alias.isEmpty();
     }
 
     private String safeLine(String line) {
